@@ -12,7 +12,11 @@ public static class Config
     /// </summary>
     public const string ClientId = "PON-AQUI-TU-CLIENT-ID";
 
-    public const string TenantId = "organizations";
+    /// <summary>
+    /// Tenant concreto en lugar de "organizations": lleva la pantalla de inicio de sesión
+    /// directa a Comillas, sin el paso previo de elegir tipo de cuenta.
+    /// </summary>
+    public const string TenantId = "comillas.edu";
 
     public static readonly string[] Scopes = { "Presence.ReadWrite" };
 

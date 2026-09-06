@@ -50,7 +50,7 @@ en este repositorio.
 | **Proveedor** | Microsoft Entra ID |
 | **Libreria** | MSAL (`Microsoft.Identity.Client`) como **cliente publico** |
 | **Flujo** | Codigo de dispositivo (`AcquireTokenWithDeviceCode`) |
-| **Tenant** | `organizations` (`Config.TenantId`) |
+| **Tenant** | `comillas.edu` (`Config.TenantId`). Se usa el tenant concreto y no `organizations` para que el login vaya directo, sin el paso de elegir tipo de cuenta |
 | **Permiso** | Microsoft Graph delegado `Presence.ReadWrite` |
 | **Secreto de cliente** | **Ninguno, a proposito.** Un `.exe` no puede guardar secretos |
 | **Cache de token** | `%APPDATA%/MiJornada/msal.cache`, cifrado con DPAPI via `MsalCacheHelper` |

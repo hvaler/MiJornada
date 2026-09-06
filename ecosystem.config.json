@@ -2,7 +2,6 @@
   "$schema": ".claude/schemas/ecosystem.config.schema.json",
   "_doc": "Configuracion de ORGANIZACION para el proyecto 'Mi jornada'. Generado por /onboarding el 2026-09-06. Precedencia: _hilo/ESTADO_PROYECTO.json (proyecto) > este archivo (organizacion) > defaults neutrales. Validar con: node .claude/scripts/validate-config.js",
   "configVersion": 1,
-
   "organization": {
     "name": "Universidad Pontificia Comillas",
     "shortName": "Comillas",
@@ -11,13 +10,11 @@
     "website": "",
     "language": "es"
   },
-
   "theme": {
     "primaryColor": "#5B5FC7",
     "secondaryColor": "#C19C00",
     "logoUrl": ""
   },
-
   "cloud": {
     "_doc": "Aplicacion de escritorio sin nube: el estado vive en la carpeta MiJornada de %APPDATA% y el token en msal.cache cifrado con DPAPI. No hay secretos de servidor, ni storage remoto, ni telemetria.",
     "provider": "none",
@@ -25,15 +22,17 @@
     "storage": "none",
     "telemetry": "none"
   },
-
   "identity": {
     "_doc": "Cliente publico MSAL contra Entra ID con flujo de codigo de dispositivo. La app no expone endpoints ni autoriza a nadie: solo obtiene un token delegado (Presence.ReadWrite) para llamar a Microsoft Graph en nombre del propio usuario. Por eso defaultRoles va vacio.",
     "idp": "entra",
-    "authority": "https://login.microsoftonline.com/organizations",
-    "claims": { "roles": "roles", "name": "name", "email": "email" },
+    "authority": "https://login.microsoftonline.com/comillas.edu",
+    "claims": {
+      "roles": "roles",
+      "name": "name",
+      "email": "email"
+    },
     "defaultRoles": []
   },
-
   "database": {
     "_doc": "El proyecto NO tiene base de datos. Los valores de esta seccion son los defaults del ecosistema y no aplican a ningun artefacto de este repositorio.",
     "engine": "sqlserver",
@@ -47,13 +46,18 @@
       "schemaCase": "lowercase",
       "legacySchemas": [],
       "allowedVerbs": [],
-      "forbiddenPrefixes": ["usp_", "sp_", "pr_", "proc_", "pa_"],
+      "forbiddenPrefixes": [
+        "usp_",
+        "sp_",
+        "pr_",
+        "proc_",
+        "pa_"
+      ],
       "forbiddenSuffixes": [],
       "legacyPrefixes": [],
       "legacyBaselineFile": ".claude/sql-legacy-baseline.txt"
     }
   },
-
   "vcs": {
     "type": "git",
     "platform": "github",
@@ -61,7 +65,6 @@
     "branchingStrategy": "github-flow-simplificado",
     "branchNamingConvention": "feature/{code}-{description}"
   },
-
   "cicd": {
     "_doc": "Sin CI/CD. El despliegue es manual: dotnet publish --self-contained, copiar el .exe y anclarlo a la barra de tareas.",
     "platform": "none",
@@ -69,9 +72,7 @@
     "deployModel": "on-demand",
     "environments": []
   },
-
   "integrations": [],
-
   "hub": {
     "_doc": "Preparado pero NO activado: falta la url del Hub Ovillo. Cuando la tengas, poner enabled=true + url y ejecutar /mcp-register.",
     "enabled": false,
@@ -80,24 +81,26 @@
     "apiKeyHeader": "X-Hub-Api-Key",
     "registerOnInstall": false
   },
-
   "distribution": {
     "baseUrl": "",
     "updateCheck": true
   },
-
   "hooks": {
     "policy": "warn",
     "blockList": []
   },
-
   "workflow": {
     "taskTypes": [
-      { "code": "EV", "label": "Evolutivo / Feature" },
-      { "code": "DT", "label": "Deuda tecnica / Tech debt" }
+      {
+        "code": "EV",
+        "label": "Evolutivo / Feature"
+      },
+      {
+        "code": "DT",
+        "label": "Deuda tecnica / Tech debt"
+      }
     ]
   },
-
   "mcp": {
     "context7Url": ""
   }
