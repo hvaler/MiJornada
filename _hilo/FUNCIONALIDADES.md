@@ -337,20 +337,53 @@ no pasa por el filtro del sistema. No es colarse por la puerta de atras: el avis
 propio usuario al fichar, dura segundos, no suena y **no roba el foco**
 (`ShowWithoutActivation` + `WS_EX_NOACTIVATE`), que es la otra mitad de "no bloqueante".
 
-Detalles que no son evidentes:
+#### Como se ve, y por que asi
+
+La tarjeta mide 420×104 y esta pensada para leerse **sin fijar la vista**:
+
+| Elemento | Para que |
+|---|---|
+| **Banda de color** de 96 px a la izquierda, con degradado vertical suave | Es lo que el ojo pilla antes de leer nada. El degradado es sutil a proposito: plano liso se ve barato, marcado se ve chillon |
+| **Emoji a 30 pt en blanco** sobre la banda | Tamano de icono, no de letra. Es el elemento de reconocimiento instantaneo |
+| **Rotulo en mayusculas**, 9 pt negrita, en el color de acento oscurecido | Hace de etiqueta ("JORNADA INICIADA"), no de frase |
+| **Mensaje a 12 pt** | Antes iba a 10,5 y competia con el rotulo |
+| **Barra de tiempo** de 5 px al pie, a color pleno sobre carril tenue | Dice cuanto le queda en pantalla. Sin ella la tarjeta desaparece de golpe y parece que se ha ido sola |
+| **Entrada deslizante** de 64 px con desaceleracion cubica, 260 ms | Llama la atencion por movimiento. Frenar al llegar hace que parezca posarse en vez de chocar |
+
+**El color dice de que va el aviso antes de leerlo**, y reutiliza la paleta de la ventana:
+morado (`#5B5FC7`) el inicio, igual que el anillo en marcha; ambar (`#C19C00`) el aviso de fin
+inminente, igual que la pausa; y un azul de noche (`#3E4270`) el final de jornada.
+
+#### Detalles que no son evidentes
 
 - **Los emoji se eligen para verse en blanco y negro.** GDI no entiende las tablas de color de
   Segoe UI Emoji, asi que todo sale en silueta monocroma. Los pictogramas que son una escena
   dentro de un cuadrado (🌅 🌇 🌆) o una forma sin contorno claro (🌊 🌤️) se convierten en un
   borron; los que son silueta reconocible (🚀 🎯 🔔 🏁 ⏱️ 🚦) se ven perfectos. Se renderizaron
   los 38 candidatos y se cambiaron cinco. **Antes de anadir un emoji, hay que verlo en monocromo**
-  — en color enganan todos.
+  — en color enganan todos. A 30 pt sobre la banda, en blanco, quedan como glifos de icono.
+- **El emoji se separa del texto con `StringInfo`**, no con `mensaje[0]`: un emoji ocupa varios
+  `char` (pares suplentes, selectores de variacion) y cortar por caracteres partiria el glifo. Si
+  el mensaje empieza por letra —los avisos funcionales— la banda se queda sin glifo, y es correcto.
 - **Sin repetir dos veces seguidas** (`Mensajes.Elegir`): con doce mensajes, el azar puro repite
   dos dias de cada doce, y ahi es donde un detalle simpatico empieza a parecer un bucle.
 - **La tarjeta se mide, no se asume** (TEC-014): el alto sale de `TextRenderer.MeasureText` con
-  las mismas banderas con las que se pinta. Los 24 mensajes caben en una linea, el mas ancho en
-  282 px de los 312 utiles.
-- **Se apilan** hacia arriba y, al cerrarse una, las de encima bajan a ocupar el hueco.
+  las mismas banderas con las que se pinta.
+- **Se apilan** hacia arriba y, al cerrarse una, las de encima **bajan deslizandose** (la Y se
+  persigue con interpolacion), no dando un salto.
+- **`CS_DROPSHADOW` si funciona aqui**, aunque la tarjeta use `Opacity` para el fundido: WinForms
+  **quita** `WS_EX_LAYERED` al llegar a opacidad 1 (comprobado con `GetWindowLong`), y sin estilo
+  layered el sistema pinta la sombra de clase.
+
+#### Verificado midiendo, no mirando
+
+- **No roba el foco**: `WS_EX_NOACTIVATE` y `WS_EX_TOOLWINDOW` activos, leidos con `GetWindowLong`.
+- **La barra se vacia**: 287 → 150 → 36 px en una tarjeta de 6 s, midiendo los pixeles del acento.
+- **La entrada desliza y decelera**: x 2188 → 2134 → 2124 con opacidad 0 → 0,84 → 1. Los 54 px del
+  primer tramo frente a los 10 del segundo son la curva cubica.
+- La primera version tenia una barra translucida de 4 px que **estaba pintada pero no se veia**
+  (muestreo de pixeles: 176,178,228 sobre blanco). Se paso a color pleno: si un elemento no se ve,
+  no sirve, y comprobarlo a ojo habria dado por bueno el original.
 
 ### M11 — Acerca de
 

@@ -14,6 +14,11 @@ public class MainForm : Form
     private static readonly Color Gris = Color.FromArgb(96, 94, 92);
     private static readonly Color Rojo = Color.FromArgb(164, 38, 44);
 
+    // Solo para los avisos: el color de la banda dice de qué va el aviso antes de leerlo. Morado
+    // es el color de la jornada en marcha (mismo que el anillo), ámbar el de "atención" (mismo
+    // que la pausa) y este azul de noche, el del final.
+    private static readonly Color Noche = Color.FromArgb(62, 66, 112);
+
     private readonly Estado _estado = Estado.Cargar();
     private readonly Ajustes _ajustes = Ajustes.Cargar();
     private readonly Lazy<GraphService> _graphLazy;
@@ -597,7 +602,7 @@ public class MainForm : Form
 
                     Notificar("Jornada finalizada", _ajustes.MensajesDeAnimo
                         ? Mensajes.Fin()
-                        : "Tu estado ha cambiado a Fuera del trabajo.");
+                        : "Tu estado ha cambiado a Fuera del trabajo.", 6000, Noche);
                 }
                 finally
                 {
@@ -623,8 +628,9 @@ public class MainForm : Form
     /// <para>Se usa una ventana propia y no <c>ShowBalloonTip</c> porque el modo <b>No molestar</b>
     /// de Windows descarta los globos de bandeja sin dejar rastro — ver <see cref="Aviso"/>.</para>
     /// </summary>
-    private void Notificar(string titulo, string mensaje, int milisegundos = 6000) =>
-        Aviso.Mostrar(titulo, mensaje, milisegundos, Restaurar);
+    private void Notificar(string titulo, string mensaje, int milisegundos = 6000,
+        Color? acento = null) =>
+        Aviso.Mostrar(titulo, mensaje, milisegundos, Restaurar, acento ?? Morado);
 
     /// <summary>
     /// Globo de aviso a N minutos del final, para poder cerrar cosas antes de que cambie el
@@ -643,7 +649,7 @@ public class MainForm : Form
         _finAvisado = _estado.Fin;
         Notificar("La jornada está a punto de terminar",
             $"Quedan {Math.Ceiling(restante.TotalMinutes):0} min. A las {_estado.Fin:HH:mm} " +
-            "pasarás a Fuera del trabajo.", 8000);
+            "pasarás a Fuera del trabajo.", 8000, Ambar);
     }
 
     private Task<bool> CambiarPresenciaAsync(string disponibilidad, string actividad) =>
