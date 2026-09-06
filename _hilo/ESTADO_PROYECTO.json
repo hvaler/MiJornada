@@ -271,8 +271,8 @@
     "proximoPaso": "Rellenar el ClientId en Estado.cs (DT-003) y ejecutar MiJornada.exe --minutos 2 con Teams abierto",
     "resumenSesion": "Onboarding del proyecto al ecosistema Ovillo, repositorio Git con remoto en GitHub, y primer dotnet build del proyecto: verde a la primera, 0 errores y 0 advertencias.",
     "archivosModificados": [
-      "_hilo/METRICAS.json",
-      "_hilo/DEUDA_TECNICA.md (DT-001 y DT-002 resueltas)"
+      "_hilo/ESTADO_PROYECTO.json",
+      "_hilo/METRICAS.json"
     ],
     "notas": "No se ha tocado el codigo de la aplicacion: el alcance acordado era solo onboarding."
   },

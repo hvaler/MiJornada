@@ -221,6 +221,61 @@ siguiente se puede aparecer como Disponible antes de fichar.
 
 ---
 
+### TEC-005: El precursor en PowerShell vive en 5.1, no en PowerShell 7
+
+**Contexto**: el script `C:\temp\fichar.ps1` (la primera implementacion, ver seccion 5) se ejecuta
+con `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`, es decir **Windows PowerShell
+5.1**. El resto del entorno de desarrollo usa **PowerShell 7**.
+
+Son dos almacenes de modulos **separados**:
+
+| Consola | Modulos de usuario en |
+|---|---|
+| Windows PowerShell 5.1 | `Documents\WindowsPowerShell\Modules` ← aqui esta `Microsoft.Graph.Authentication` |
+| PowerShell 7 (`pwsh`) | `Documents\PowerShell\Modules` |
+
+**El sintoma**: `Connect-MgGraph` da "not recognized" en PowerShell 7 aunque el modulo este
+perfectamente instalado. Se distingue que consola dio el error por el texto exacto: 5.1 dice
+"as **the** name of a cmdlet", 7 dice "as **a** name of a cmdlet".
+
+**La trampa anadida**: lanzar `powershell.exe` **desde** una sesion de PowerShell 7 (o desde una
+herramienta que corra sobre ella) hace que el proceso hijo **herede el `PSModulePath` de la 7**,
+que no incluye la carpeta de la 5.1. Resultado: `Get-Module -ListAvailable` dice que el modulo no
+existe aunque este ahi. Comprobarlo asi da un falso negativo.
+
+**Solucion fiable** desde cualquier consola: importar por ruta completa.
+
+```powershell
+Import-Module "$env:USERPROFILE\Documents\WindowsPowerShell\Modules\Microsoft.Graph.Authentication\2.39.0\Microsoft.Graph.Authentication.psd1"
+```
+
+**Fecha**: 2026-09-06
+
+---
+
+### TEC-006: El cache de tokens de Graph PowerShell demuestra que la autenticacion funciona aqui
+
+En `%LOCALAPPDATA%\.IdentityService\` estan `mg.msal.cache.cae` y `mg.msal.cache.nocae`, con fecha
+2026-09-02. Son el cache MSAL de Microsoft Graph PowerShell.
+
+**Por que importa**: es la prueba empirica de que, **en este equipo y con esta cuenta**, la
+autenticacion delegada contra Graph con `Presence.ReadWrite` por codigo de dispositivo funciona.
+No es documentacion ni teoria: ya ocurrio. Confirma ADR-002 desde un angulo independiente.
+
+Tambien demuestra que se puede llamar a Graph **sin registrar ninguna aplicacion propia**, porque
+`Connect-MgGraph` usa la aplicacion multiinquilino de Microsoft "Microsoft Graph Command Line
+Tools" (`14d82eec-204b-4c2f-b7e8-296a70dab67e`, segun la documentacion de Microsoft). Es la salida
+de emergencia para DT-003 si no hubiera acceso al portal — con la contrapartida de que en los
+registros de inicio de sesion la app aparece como esa herramienta y no como "Mi jornada", y de que
+el tenant puede bloquearla.
+
+**No leer nunca el contenido de esos ficheros de cache**: contienen tokens de acceso y de
+actualizacion.
+
+**Fecha**: 2026-09-06
+
+---
+
 ## 4. Preferencias del proyecto
 
 ### PREF-001: Sin arquitectura de mas
