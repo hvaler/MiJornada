@@ -1,103 +1,110 @@
-# Fase 2: Configuración del Entorno
+# 02_Entorno — Instalación y registro en Entra
 
-## Objetivo
+Scripts que hacen todo lo que antes se hacía a mano.
 
-Crear la base del proyecto .NET con todas las configuraciones necesarias.
-
-## Herramientas
-- **Claude Code**: Generación de scripts y estructura
-- **GitHub Copilot**: Autocompletado en archivos de configuración
+> **Nota**: `docker-compose.yml` es residuo de la plantilla del ecosistema. Este proyecto **no
+> tiene base de datos ni servicios**: el estado vive en un JSON en `%APPDATA%`. Se puede borrar.
 
 ---
 
-## Docker - Entorno de Desarrollo
+## Instalar
 
-### Servicios Incluidos
-
-| Servicio | Puerto | Descripción |
-|----------|--------|-------------|
-| SQL Server 2017 | 1433 | Base de datos compatible con producción |
-| Redis | 6379 | Caché distribuida |
-| Azurite | 10000-10002 | Emulador Azure Storage |
-| Mailhog | 1025/8025 | SMTP de pruebas |
-
-### Configuración SQL Server
-
-Compatible con producción:
-- **Versión**: SQL Server 2017 (14.0)
-- **Intercalación**: `SQL_Latin1_General_CP1250_CI_AS`
-- **Imagen**: `mcr.microsoft.com/mssql/server:2017-latest`
-
-### Inicio Rápido
-
-```bash
-# 1. Copiar plantilla de variables de entorno
-cp .env.example .env
-
-# 2. Editar .env con los valores del proyecto
-
-# 3. Levantar servicios
-docker-compose up -d
-
-# 4. Verificar estado
-docker-compose ps
+```powershell
+.\instalar.ps1
 ```
 
-### Cadenas de Conexión para Desarrollo
+Publica la aplicación desde el código, la deja en `%LOCALAPPDATA%\Programs\MiJornada`, crea el
+acceso directo del menú Inicio y la registra en «Aplicaciones instaladas».
 
-**SQL Server:**
-```
-Server=localhost,1433;Database=MiBaseDatos;User Id=sa;Password=DevPassword123!;TrustServerCertificate=True;
+**No hace falta ser administrador.** Instala solo para el usuario actual, y es deliberado: es la
+diferencia entre «te lo instalas y ya» y «abre un ticket». Además la aplicación es de un usuario
+por definición —cambia *tu* presencia de Teams—, así que una instalación para toda la máquina no
+tendría sentido.
+
+| Opción | Para qué |
+|---|---|
+| `-ConInicio` | Arrancar con Windows |
+| `-ConInicio -Minimizado` | Arrancar con Windows, directo a la bandeja |
+| `-Ligero` | Publicar dependiendo del runtime: 1,4 MB en vez de 155, pero exige el **.NET Desktop Runtime 8** instalado |
+| `-Origen <carpeta>` | Instalar desde una carpeta ya publicada, sin necesitar el SDK de .NET |
+
+### Autocontenido por defecto, y por qué
+
+| | Tamaño | Requisitos |
+|---|---|---|
+| **Autocontenido** (por defecto) | 155 MB, un solo `.exe` | ninguno |
+| Ligero (`-Ligero`) | 1,4 MB | .NET Desktop Runtime 8 |
+
+Son 110 veces más grande, y aun así el autocontenido es el que se queda por defecto: el objetivo
+del instalador es que la aplicación funcione en un equipo donde no hay nada, sin tener que
+explicarle a nadie que se instale un runtime primero. Para actualizar tu propio equipo, `-Ligero`
+va de sobra.
+
+### Dárselo a otra persona
+
+```powershell
+dotnet publish ..\03_Desarrollo\MiJornada.csproj -c Release -r win-x64 `
+  --self-contained true -p:PublishSingleFile=true -o MiJornada-0.11.0
 ```
 
-**Redis:**
-```
-localhost:6379
+Se le pasa esa carpeta junto a `instalar.ps1` y `desinstalar.ps1`, y ejecuta:
+
+```powershell
+.\instalar.ps1 -Origen .\MiJornada-0.11.0
 ```
 
-**Azure Storage (Azurite):**
-```
-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;
-```
+**No necesita su propio registro en Entra** — ver más abajo.
 
 ---
 
-## IMPORTANTE
+## Desinstalar
 
-1. **NUNCA commitear el archivo `.env`** con credenciales reales
-2. La contraseña de SA debe cumplir requisitos de complejidad de SQL Server
-3. Para producción, usar **Azure Key Vault** (ver `Documentos_Base/01_Estructura_Tecnica/`)
-4. El código debe funcionar con **infraestructura balanceada** (usar Redis, Azure Blob Storage)
+```powershell
+.\desinstalar.ps1              # conserva tus ajustes y tu histórico
+.\desinstalar.ps1 -ConDatos    # borra también %APPDATA%\MiJornada
+```
 
----
+También desde **Configuración → Aplicaciones instaladas**. El desinstalador se copia junto a la
+aplicación al instalar, para que se pueda quitar aunque ya no exista este repositorio.
 
-## Checklist
-
-- [ ] Copiar `.env.example` a `.env`
-- [ ] Configurar variables de entorno
-- [ ] Ejecutar `docker-compose up -d`
-- [ ] Verificar que todos los servicios estén running
-- [ ] Generar solución y proyectos .NET en `03_Codigo/`
-- [ ] Instalar dependencias NuGet
-- [ ] Configurar appsettings.json (sin secretos)
-- [ ] Configurar User Secrets para desarrollo local
-- [ ] Verificar compilación exitosa
-- [ ] Probar conexión a SQL Server
+Por defecto **conserva los datos**: una desinstalación no debería llevarse por delante meses de
+histórico sin preguntar, y lo normal al desinstalar es volver a instalar.
 
 ---
 
-## Archivos de esta carpeta
+## Registro en Entra ID
 
-| Archivo | Descripción |
-|---------|-------------|
-| `docker-compose.yml` | Definición de servicios Docker |
-| `.env.example` | Plantilla de variables de entorno |
-| `Scripts/` | Scripts de setup y SQL |
+```powershell
+.\crear-registro-entra.ps1
+```
+
+**Esto se ejecuta UNA vez para todo el tenant, no una por persona.** Ya está hecho: ClientId
+`dbcd6425-561b-4d91-a4d5-f0bb25b31241`.
+
+El registro se creó con `signInAudience = AzureADMyOrg`, así que cualquier cuenta de la
+organización puede usar el mismo `.exe`; y como los permisos son **delegados**
+(`Presence.ReadWrite`, `Files.ReadWrite.AppFolder`), cada persona solo puede tocar su propia
+presencia. Crear un registro por persona multiplicaría registros sin ganar nada.
+
+El script sabe **actualizar** uno existente, añadiendo solo los permisos que falten. Se ejecuta
+si algún día hace falta un permiso nuevo.
 
 ---
 
-## Enlaces
+## Lo que el instalador NO hace
 
-- [README principal](../README.md)
-- [Anterior: Diseño](../01_Diseño/)
-- [Siguiente: Código](../03_Codigo/)
+- **Anclar a la barra de tareas.** Windows 11 quitó esa posibilidad a los scripts a propósito,
+  para que ningún programa te llene la barra sin permiso. Hay que hacerlo a mano: buscarlo en el
+  menú Inicio, botón derecho, «Anclar a la barra de tareas».
+- **Crear el registro de Entra.** Ver arriba: ya existe y es compartido.
+- **Firmar el ejecutable.** Sin firma, SmartScreen puede avisar la primera vez en un equipo
+  ajeno. Requeriría un certificado de firma de código.
+
+---
+
+## Aviso para quien edite estos scripts
+
+Se guardan en **UTF-8 con BOM**. Sin el BOM, Windows PowerShell 5.1 —que es el que ejecuta un
+`.ps1` al hacer doble clic— los lee como ANSI y los acentos salen como `â€¦`. Verificado: la
+primera versión se guardó sin BOM y la salida salía con mojibake. Ver TEC-017 en
+`_hilo/LECCIONES.md`.

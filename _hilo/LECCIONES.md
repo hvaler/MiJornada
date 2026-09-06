@@ -560,6 +560,35 @@ automatizacion se atasca con los dialogos modales.
 
 **Fecha**: 2026-09-06
 
+### TEC-017: Un `.ps1` con acentos necesita BOM, o PowerShell 5.1 lo lee como ANSI
+
+**Sintoma**: el instalador imprimia `autocontenido…` como `autocontenidoâ€¦`, y `—` como `â€”`.
+El fichero estaba bien; lo que estaba mal era como se leia.
+
+**Causa**: Windows PowerShell 5.1 asume la **pagina de codigos ANSI** al abrir un `.ps1` sin BOM.
+Un fichero UTF-8 sin marca se decodifica byte a byte y cada caracter no ASCII sale como dos o
+tres simbolos raros. PowerShell 7 asume UTF-8 y no tiene el problema, que es justo lo que hace
+que esto se escape: **se prueba en la 7 y se ejecuta en la 5.1**.
+
+**Solucion**: guardar los `.ps1` en **UTF-8 con BOM**:
+
+```powershell
+$texto = [System.IO.File]::ReadAllText($f, [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($f, $texto, [System.Text.UTF8Encoding]::new($true))
+```
+
+**Ojo, es lo contrario que para los JSON de `_hilo`**, que van UTF-8 **sin** BOM (`CLAUDE.md`,
+FB-004/FB-007): un BOM ahi rompe a los lectores de JSON. La regla no es "BOM siempre" ni "BOM
+nunca", sino **quien va a leer el fichero**: PowerShell 5.1 lo necesita, un lector de JSON lo
+rechaza.
+
+**Como se detecta**: ejecutar el script con `powershell.exe` (5.1) y no solo con `pwsh`, y
+**mirar la salida**. Un `Select-String` sobre el fichero desde 5.1 tambien lo delata.
+
+**Fecha**: 2026-09-06
+
+---
+
 ### TEC-016: Con No molestar, Windows descarta los globos de bandeja (no los aplaza)
 
 `NotifyIcon.ShowBalloonTip` es la forma obvia de notificar desde una aplicacion de bandeja y, con

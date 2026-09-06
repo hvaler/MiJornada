@@ -267,18 +267,6 @@
     "proximoPaso": "Del backlog quedan: historico de jornadas con resumen semanal, y el INSTALADOR (registro de Entra, despliegue del .exe, acceso directo).",
     "resumenSesion": "Sesion larga: onboarding al ecosistema, repositorio en GitHub, primer build, registro propio en Entra, verificacion funcional completa contra Graph, y todo el backlog salvo el historico y el instalador (icono propio, ajustes en dialogo con pestanas, icono de bandeja dinamico, fichaje automatico al desbloquear con franja y calendario, estado compartido entre equipos, duracion por dia, avisos con mensaje de animo y limpieza de la presencia al cancelar).",
     "archivosModificados": [
-      "03_Desarrollo/ArranqueWindows.cs",
-      "03_Desarrollo/Aviso.cs",
-      "03_Desarrollo/DialogoAcercaDe.cs",
-      "03_Desarrollo/DialogoAjustes.cs",
-      "03_Desarrollo/Estado.cs",
-      "03_Desarrollo/GraphService.cs",
-      "03_Desarrollo/IconoAnillo.cs",
-      "03_Desarrollo/MainForm.cs",
-      "03_Desarrollo/Mensajes.cs",
-      "03_Desarrollo/Program.cs",
-      "03_Desarrollo/SincronizacionGraph.cs",
-      "_hilo/ESTADO_PROYECTO.json",
       "_hilo/METRICAS.json"
     ],
     "notas": "PresenciaService.cs paso a llamarse GraphService.cs al generalizarlo para toda la API, no solo la presencia."

@@ -314,6 +314,52 @@ OneDrive). Ver **ADR-009** para el porque y las alternativas descartadas.
 **Sin verificar todavia**: el cierre por vencimiento desde el otro equipo. Usa la misma ruta de
 publicacion que la pausa, ya verificada, pero no se ha ejercitado.
 
+### M18 — Instalador
+
+**Ficheros**: `02_Entorno/instalar.ps1`, `02_Entorno/desinstalar.ps1` · **Estado**: verificado
+2026-09-06 (instalado, desinstalado y reinstalado en HUGOVALER)
+
+Un script de PowerShell, no un MSI. WiX o Inno Setup traerian una herramienta externa, un formato
+propio y permisos de administrador para un `.exe` de un usuario: aqui el instalador cabe en un
+script y usa lo mismo que ya usa el resto del proyecto (`crear-registro-entra.ps1`).
+
+| | |
+|---|---|
+| Instala en | `%LOCALAPPDATA%\Programs\MiJornada` |
+| Datos | `%APPDATA%\MiJornada` (no se tocan) |
+| Administrador | **no hace falta** |
+| Por defecto | autocontenido, 155 MB, un solo `.exe` |
+| Con `-Ligero` | 1,4 MB, exige .NET Desktop Runtime 8 |
+
+**Instala solo para el usuario actual**, y es deliberado: es la diferencia entre "te lo instalas y
+ya" y "abre un ticket". Ademas la aplicacion es de un usuario por definicion —cambia *tu*
+presencia— asi que una instalacion de maquina no tendria sentido.
+
+**Autocontenido por defecto pese a pesar 110 veces mas**: el objetivo del instalador es que
+funcione en un equipo donde no hay nada, sin tener que explicarle a nadie que instale un runtime
+primero. Para actualizar el equipo propio, `-Ligero` sobra.
+
+**No crea registro en Entra**, y es correcto: ya hay uno para todo el tenant
+(`signInAudience = AzureADMyOrg`) y los permisos son delegados, asi que cada persona solo toca su
+propia presencia. Uno por persona multiplicaria registros sin ganar nada.
+
+Detalles que salieron al construirlo:
+
+- **Reapunta el arranque automatico.** Si ya tenias activado "arrancar con Windows" desde los
+  Ajustes, ese acceso directo apuntaba al `.exe` viejo. Sin reapuntarlo, al reiniciar arrancaria
+  la version anterior — o nada, si esa ruta ya no existe.
+- **El desinstalador se copia junto a la aplicacion**, para poder quitarla aunque desaparezca el
+  repositorio; y como vive dentro de la carpeta que tiene que borrar, encarga el borrado de la
+  carpeta a un proceso aparte que espera a que el script termine.
+- **Conserva los datos al desinstalar** salvo `-ConDatos` (que ademas pide escribir BORRAR). Una
+  desinstalacion no deberia llevarse meses de historico sin preguntar.
+- **Anclar a la barra de tareas no se puede automatizar**: Windows 11 quito esa posibilidad a los
+  scripts a proposito. Se explica al terminar, en vez de callarlo.
+
+**Verificado el ciclo completo**: instalar (acceso directo, entrada en "Aplicaciones instaladas",
+`.exe` que arranca desde su nueva ruta), desinstalar (carpeta, acceso directo y registro fuera;
+`msal.cache` intacto, asi que no hay que volver a iniciar sesion) y reinstalar.
+
 ### M17 — Historico de jornadas
 
 **Ficheros**: `Historico.cs`, `DialogoHistorico.cs` · **Estado**: verificado 2026-09-06
@@ -526,9 +572,7 @@ Lo tachado ya esta hecho.
 - ~~**Duracion por dia de la semana**~~ — HECHO 2026-09-06, con las siete y en pestañas.
 - ~~**Franja horaria** del fichaje automatico~~ y ~~**saltar fines de semana y festivos**~~
   — HECHO 2026-09-06 (M15).
-- **INSTALADOR**: todo lo que hoy se hace a mano deberia hacerlo el (crear/actualizar el registro
-  de Entra con `02_Entorno/crear-registro-entra.ps1`, colocar el .exe, el acceso directo de
-  inicio). Es el siguiente salto de usabilidad si esto lo va a usar alguien mas.
+- ~~**INSTALADOR**~~ — HECHO 2026-09-06 (M18). Con esto **el backlog original queda cerrado**.
 
 **Funcionalidad**
 
