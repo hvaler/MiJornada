@@ -317,9 +317,45 @@ publicacion que la pausa, ya verificada, pero no se ha ejercitado.
 **Ficheros**: `Aviso.cs`, `Mensajes.cs` · **Estado**: verificado 2026-09-06
 
 Al empezar y al terminar la jornada aparece un aviso no bloqueante con un mensaje corto y un
-emoji, elegido al azar entre doce de cada tipo. Se desactiva en Ajustes > Presencia
+emoji, elegido al azar entre **veinticuatro de cada tipo**. Se desactiva en Ajustes > Presencia
 (`MensajesDeAnimo`, marcado por defecto); los avisos **funcionales** —el de "a punto de terminar"
 y el de "sigue en marcha en la bandeja"— no dependen de esa casilla y salen siempre.
+
+#### Mensajes propios: `mensajes.json`
+
+En la carpeta de datos se puede poner un `mensajes.json` con las listas propias, y **sustituye** a
+las de serie (la lista que no traiga, se queda como está):
+
+```json
+{ "Inicio": ["🚀 Uno.", "☕ Otro."], "Fin": ["🌙 Y otro."] }
+```
+
+Se llega desde **Ajustes > Presencia > "Editar los mensajes"**, que lo crea con los actuales de
+plantilla y lo abre: se edita sobre algo que ya funciona en vez de sobre una hoja en blanco. Sin
+ese enlace la funcionalidad no existiria para quien fuera a usarla — nadie adivina que hay un
+fichero asi en `%APPDATA%`.
+
+**Por que un fichero y no descargar frases de internet**, que era la idea de partida. Las
+colecciones que hay (repositorios JSON de frases celebres, APIs de *quotes*) no encajan aqui por
+cuatro motivos concretos, no por purismo:
+
+1. **Genero equivocado.** Son frases celebres sobre el exito y la constancia; estos mensajes
+   hablan de **este momento** (fichar, cerrar el portatil). "El exito es la suma de pequenos
+   esfuerzos" no dice nada al terminar una jornada.
+2. **Tono.** El aleccionamiento cansa a la tercera vez y esto se lee unas 400 veces al ano. Es la
+   razon por la que los de serie son cortos y algo secos.
+3. **Sin emoji.** Toda la legibilidad de la tarjeta se apoya en el emoji grande sobre la banda.
+   Una frase descargada deja la banda vacia **siempre**.
+4. **Longitud.** El ancho util son 306 px. Los 48 de serie caben en dos lineas como mucho; una
+   cita con autor se va a cuatro.
+
+Y si se usara una API en vez de un fichero, habria **red en el momento de fichar**, que es
+justo cuando la aplicacion tiene que ser fiable. El fichero deja la puerta abierta a usar
+cualquier fuente sin pagar ninguno de esos precios: se descarga, se adapta y se pega.
+
+**Comprobado**: sin fichero salen los de serie; con fichero propio salen los propios; y con el
+fichero **estropeado a proposito** vuelve a los de serie sin lanzar — un JSON roto no puede
+impedir fichar.
 
 **Lo importante de este modulo no es el mensaje, es el mecanismo.** La primera version usaba
 `NotifyIcon.ShowBalloonTip`, que es lo obvio y resulto ser inservible:
@@ -430,12 +466,14 @@ Lo tachado ya esta hecho.
 
 - ~~**Fichaje automatico** al desbloquear~~ — HECHO 2026-09-06 (M10), pendiente de probar
   bloqueando y desbloqueando el equipo.
-- **Aviso 15 minutos antes del final**, para poder cerrar cosas.
+- ~~**Aviso 15 minutos antes del final**~~ — HECHO 2026-09-06, configurable de 0 a 120 min.
+- ~~**Estado compartido entre equipos**~~ — HECHO 2026-09-06 (M12, ADR-009). No estaba en la
+  lista original: salio al pensar que hacer con dos equipos y Teams abierto en los dos.
+- ~~**Avisos con mensaje de animo**~~ — HECHO 2026-09-06 (M16). Tampoco estaba en la lista.
 - **Historico de jornadas** en el propio JSON, con resumen semanal. La version de Power Apps lo
   tenia a mano por la lista de SharePoint y aqui se perdio.
 - **Leer la presencia real** con `GET /users/{id}/presence` en vez de asumir que el cambio se
   aplico. Detectaria el caso de Teams cerrado, que hoy pasa en silencio.
-- **Saltar fines de semana y festivos.** Pendiente desde la primera version.
 
 **Robustez** — ver `_hilo/DEUDA_TECNICA.md`: reintento en el POST (DT-008), instancia unica con
 `Mutex` (DT-009), registro de actividad (DT-010).

@@ -52,7 +52,7 @@ public class MainForm : Form
     private bool _cerrandoDeVerdad;
     private bool _finalizando;
 
-    /// <summary>Hora de fin sobre la que ya se avisó, para no repetir el globo cada segundo.
+    /// <summary>Hora de fin sobre la que ya se avisó, para no repetir el aviso cada segundo.
     /// Al reanudar, la hora de fin se desplaza y vuelve a avisarse: es lo deseable.</summary>
     private DateTimeOffset? _finAvisado;
 

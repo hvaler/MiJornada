@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace MiJornada;
 
 /// <summary>
@@ -232,7 +234,7 @@ public class DialogoAjustes : Form
         _avisoMinutos.Value = Math.Clamp(_ajustes.AvisoMinutos, 0, 120);
         _pista.SetToolTip(_avisoMinutos, "0 = sin aviso");
 
-        p.Controls.Add(Texto(16, 178, 330, "Un globo para poder cerrar cosas. 0 lo desactiva.", null, 22));
+        p.Controls.Add(Texto(16, 178, 330, "Un aviso para poder cerrar cosas. 0 lo desactiva.", null, 22));
 
         p.Controls.Add(Negrita(16, 214, 320, "Mensajes"));
         _animo.SetBounds(16, 240, 330, 22);
@@ -241,7 +243,49 @@ public class DialogoAjustes : Form
         _animo.Checked = _ajustes.MensajesDeAnimo;
         p.Controls.Add(_animo);
 
+        // Sin este enlace la funcionalidad no existe para quien la fuera a usar: nadie adivina
+        // que hay un mensajes.json en %APPDATA%. El enlace lo crea con los actuales de plantilla
+        // y lo abre, para editar sobre algo que ya funciona en vez de sobre una hoja en blanco.
+        //
+        // Va en una sola línea y no en dos: el área útil de la pestaña son ~306 px de alto y un
+        // rótulo explicativo encima dejaba el enlace cortado por abajo.
+        var editar = new LinkLabel
+        {
+            Bounds = new Rectangle(14, 266, 330, 22),
+            Text = "Editar los mensajes (vienen 24 de cada)…",
+            LinkColor = Morado,
+            LinkBehavior = LinkBehavior.HoverUnderline,
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+        editar.Click += (_, _) => EditarMensajes();
+        p.Controls.Add(editar);
+
         return p;
+    }
+
+    /// <summary>
+    /// Abre <c>mensajes.json</c> en el editor de texto asociado, creándolo con los mensajes
+    /// actuales si aún no existe. Los cambios se aplican al reiniciar la aplicación.
+    /// </summary>
+    private void EditarMensajes()
+    {
+        try
+        {
+            if (!File.Exists(Mensajes.Fichero)) Mensajes.CrearPlantilla();
+
+            Process.Start(new ProcessStartInfo(Mensajes.Fichero) { UseShellExecute = true });
+
+            MessageBox.Show(this,
+                "Edita la lista y guarda el fichero." + Environment.NewLine + Environment.NewLine +
+                "Los cambios se aplican la próxima vez que abras Mi jornada. Si lo dejas vacío o " +
+                "se estropea, se vuelven a usar los mensajes de serie.",
+                "Mensajes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo abrir el fichero de mensajes",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     private TabPage PestanaAutomatismos()
@@ -347,12 +391,12 @@ public class DialogoAjustes : Form
     /// </param>
     private static Label Texto(int x, int y, int ancho, string texto,
                                Color? color = null, int alto = 40) => new()
-    {
-        Bounds = new Rectangle(x, y, ancho, alto),
-        Text = texto,
-        TextAlign = alto <= 24 ? ContentAlignment.MiddleLeft : ContentAlignment.TopLeft,
-        ForeColor = color ?? Gris
-    };
+                               {
+                                   Bounds = new Rectangle(x, y, ancho, alto),
+                                   Text = texto,
+                                   TextAlign = alto <= 24 ? ContentAlignment.MiddleLeft : ContentAlignment.TopLeft,
+                                   ForeColor = color ?? Gris
+                               };
 
     /// <summary>Selector de hora compacto. Se usa DateTimePicker y no dos ruedas para que
     /// admita minutos sin ocupar cuatro controles.</summary>
