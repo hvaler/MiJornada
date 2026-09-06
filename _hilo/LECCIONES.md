@@ -414,6 +414,54 @@ sin depender de que alguien haga clic:
 
 ---
 
+### TEC-012: Iconos dinamicos en WinForms sin filtrar handles GDI
+
+`Bitmap.GetHicon()` devuelve un **HICON sin gestionar**: el recolector de basura no lo libera.
+Actualizar el icono de la bandeja durante una jornada de 7 h son unas 100 actualizaciones; sin
+liberar, se filtra un objeto GDI en cada una y el proceso acaba agotandolos.
+
+El patron correcto (ver `IconoAnillo.Crear`):
+
+```csharp
+var hicon = bmp.GetHicon();
+try {
+    using var temporal = Icon.FromHandle(hicon);
+    return (Icon)temporal.Clone();   // copia gestionada, sobrevive al DestroyIcon
+} finally {
+    DestroyIcon(hicon);              // P/Invoke a user32
+}
+```
+
+`Icon.FromHandle` **no toma posesion** del handle: el icono que devuelve deja de valer en cuanto
+se destruye el HICON, por eso el `Clone()`.
+
+Al sustituir el icono del `NotifyIcon`: **asignar primero el nuevo y liberar despues el anterior**,
+nunca al reves.
+
+**Como comprobarlo** (asi se valido el 2026-09-06): `GetGuiResources(handle, 0)` da los objetos
+GDI del proceso. Se mantuvieron en 40 durante ~100 redibujados. Si hubiera fuga, creceria de uno
+en uno.
+
+**Fecha**: 2026-09-06
+
+---
+
+### TEC-013: SystemEvents notifica fuera del hilo de la interfaz y no se suelta solo
+
+`SystemEvents.SessionSwitch` (bloqueo/desbloqueo de sesion) tiene dos trampas:
+
+1. **Notifica en un hilo del pool.** Tocar controles desde ahi revienta: hay que volver al hilo
+   de la ventana con `BeginInvoke`.
+2. **`SystemEvents` guarda una referencia estatica al manejador.** Si no te das de baja en
+   `OnFormClosing`, el manejador sigue vivo sobre un formulario ya destruido.
+
+Ademas, un manejador `async void` necesita su propio try/catch: una excepcion ahi tumba el
+proceso, y con el la jornada en curso (mismo riesgo que DT-005).
+
+**Fecha**: 2026-09-06
+
+---
+
 ## 4. Preferencias del proyecto
 
 ### PREF-001: Sin arquitectura de mas

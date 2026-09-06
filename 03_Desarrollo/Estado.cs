@@ -52,6 +52,19 @@ public class Ajustes
     /// </summary>
     public string PausaDisponibilidad { get; set; } = "Away";
 
+    /// <summary>
+    /// Fichar solo al desbloquear el equipo. Desactivado por defecto: cambia la presencia del
+    /// usuario sin que él haga nada, y eso hay que pedirlo, no imponerlo.
+    /// </summary>
+    public bool FicharAlDesbloquear { get; set; }
+
+    /// <summary>
+    /// Día del último fichaje automático. Evita que volver del café vuelva a fichar: el
+    /// automatismo salta una vez al día y el resto de desbloqueos no hacen nada.
+    /// Vive aquí y no en <see cref="Estado"/> porque debe sobrevivir a <see cref="Estado.Limpiar"/>.
+    /// </summary>
+    public DateTime? UltimoAutoFichaje { get; set; }
+
     [JsonIgnore]
     public TimeSpan Duracion => TimeSpan.FromMinutes(Math.Clamp(DuracionMinutos, 1, 24 * 60));
 

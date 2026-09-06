@@ -96,6 +96,7 @@ solo con el anillo y el botón; la configuración crece aquí sin ensuciarla.
 |---|---|---|
 | Duración de la jornada | 0-23 h + 0-59 min | 7 h |
 | Al pausar, aparecer como | Ausente · Vuelvo enseguida · Ocupado · No molestar | Ausente |
+| Fichar al desbloquear el equipo | sí / no | **no** |
 
 - Se persisten en `%APPDATA%/MiJornada/ajustes.json`, **fichero aparte de `estado.json`**:
   cancelar una jornada no debe olvidar que tu jornada dura 6 horas.
@@ -122,6 +123,56 @@ pista gris solo aparece de 32 px para arriba: por debajo es ruido.
 
 Para regenerarlo: `01_Diseno/generar-icono.ps1`. El `.ico` se commitea.
 
+### M9 — Icono de bandeja dinamico
+
+**Ficheros**: `IconoAnillo.cs`, `MainForm.ActualizarIconoBandeja` · **Estado**: verificado 2026-09-06
+
+El icono de la bandeja **deja de ser fijo mientras hay jornada**: dibuja el anillo con el avance
+real, para ver cuanto queda sin abrir la ventana. Morado corriendo, ambar en pausa, y vuelve al
+icono estatico al terminar.
+
+Dos cosas que hacen que esto no se rompa a las horas:
+
+- **Se redibuja solo cuando cambia el porcentaje entero.** A un icono por segundo durante siete
+  horas serian 25.000 iconos para 100 imagenes distintas.
+- **Se destruye el HICON con `DestroyIcon`.** El handle que devuelve `Bitmap.GetHicon()` no lo
+  gestiona el recolector: sin liberarlo, cada actualizacion filtra un objeto GDI y el proceso
+  acaba agotandolos. Verificado: **los objetos GDI se quedan en 40 tras ~100 redibujados**.
+- El tamano lo marca `SystemInformation.SmallIconSize`, que respeta el DPI. Dibujar a 32 fijo y
+  dejar que Windows reduzca da un anillo emborronado.
+
+### M10 — Fichaje automatico al desbloquear
+
+**Fichero**: `MainForm.Sesion_Cambiada` · **Estado**: implementado, **sin probar de punta a punta**
+
+Escucha `SystemEvents.SessionSwitch` y ficha solo al desbloquear el equipo. Es lo que convierte
+la aplicacion en algo que no hay que acordarse de usar.
+
+**Desactivado por defecto**: cambia la presencia del usuario sin que el haga nada, y eso se pide,
+no se impone.
+
+Guardas, en orden:
+
+1. Solo el evento `SessionUnlock`.
+2. Solo si el ajuste esta activado.
+3. Solo si no hay ya una jornada en marcha o pausada.
+4. **Solo una vez al dia** (`UltimoAutoFichaje`): volver del cafe no vuelve a fichar, y si hoy se
+   cancelo la jornada a proposito, tampoco — cancelar significa "hoy no quiero estar fichado".
+5. El dia solo se marca como consumido **si Graph respondio bien**: un fallo de red no gasta el
+   intento.
+
+Detalles tecnicos que no son opcionales:
+
+- `SystemEvents` notifica en un **hilo del pool**: hay que volver al de la interfaz con
+  `BeginInvoke` antes de tocar nada.
+- `SystemEvents` guarda una **referencia estatica** al manejador: hay que darse de baja en
+  `OnFormClosing` o seguiria vivo sobre un formulario destruido.
+- El manejador es `async void` y lleva su propio try/catch: una excepcion ahi tumbaria el proceso
+  y con el la jornada (DT-005).
+- Solo avisa con globo **si la ventana no esta a la vista**; si lo esta, la cuenta atras ya se ve.
+
+**Como probarlo**: activar la casilla en Ajustes, bloquear con Win+L y desbloquear.
+
 ---
 
 ## Funcionalidades criticas (no pueden fallar)
@@ -142,18 +193,14 @@ Lo tachado ya esta hecho.
 
 - ~~**Icono propio**~~ — HECHO 2026-09-06 (M8).
 - ~~**Duracion configurable**~~ y ~~**ajustes persistidos**~~ — HECHO 2026-09-06 (M7).
-- **Icono de bandeja dinamico** con el anillo de progreso dibujado en 32×32, para ver cuanto
-  queda sin abrir la ventana. Hay una implementacion funcional en la funcion `Nuevo-Icono` del
-  script `mi-jornada.ps1`, portable casi tal cual. Ahora es mas facil: `01_Diseno/generar-icono.ps1`
-  ya dibuja el anillo, solo habria que parametrizar el barrido y generar el icono en caliente.
-- **Mas ajustes**, ya que hay diagnostico donde ponerlos: arranque minimizado, fichar al iniciar
-  sesion de Windows, aviso antes del final.
+- ~~**Icono de bandeja dinamico**~~ — HECHO 2026-09-06 (M9).
+- **Mas ajustes**, ya que hay dialogo donde ponerlos: arranque minimizado, aviso antes del final,
+  franja horaria en la que el fichaje automatico puede saltar.
 
 **Funcionalidad**
 
-- **Fichaje automatico** al desbloquear el equipo por la manana, escuchando
-  `SystemEvents.SessionSwitch`. Es lo que convierte la aplicacion en algo que no hay que
-  acordarse de usar.
+- ~~**Fichaje automatico** al desbloquear~~ — HECHO 2026-09-06 (M10), pendiente de probar
+  bloqueando y desbloqueando el equipo.
 - **Aviso 15 minutos antes del final**, para poder cerrar cosas.
 - **Historico de jornadas** en el propio JSON, con resumen semanal. La version de Power Apps lo
   tenia a mano por la lista de SharePoint y aqui se perdio.

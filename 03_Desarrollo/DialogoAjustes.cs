@@ -17,6 +17,7 @@ public class DialogoAjustes : Form
     private readonly NumericUpDown _horas = new();
     private readonly NumericUpDown _minutos = new();
     private readonly ComboBox _pausa = new();
+    private readonly CheckBox _autoFichaje = new();
     private readonly Label _aviso = new();
     private readonly Button _guardar = new();
 
@@ -26,7 +27,7 @@ public class DialogoAjustes : Form
         _jornadaEnMarcha = jornadaEnMarcha;
 
         Text = "Ajustes";
-        ClientSize = new Size(340, 236);
+        ClientSize = new Size(340, 344);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -80,14 +81,36 @@ public class DialogoAjustes : Form
         _pausa.SelectedItem = _ajustes.Pausa;
         Añadir(_pausa);
 
+        // ------------------------------------------------ fichaje automático
+        Añadir(new Label
+        {
+            Bounds = new Rectangle(20, 190, 300, 20),
+            Text = "Automatismos",
+            ForeColor = Tinta,
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold)
+        });
+
+        _autoFichaje.SetBounds(20, 216, 300, 22);
+        _autoFichaje.Text = "Fichar al desbloquear el equipo";
+        _autoFichaje.ForeColor = Tinta;
+        _autoFichaje.Checked = _ajustes.FicharAlDesbloquear;
+        Añadir(_autoFichaje);
+
+        Añadir(new Label
+        {
+            Bounds = new Rectangle(38, 240, 290, 32),
+            Text = "Una vez al día. Si ya has fichado o cancelado hoy, no hace nada.",
+            ForeColor = Gris
+        });
+
         // ---------------------------------------------------------- avisos
-        _aviso.SetBounds(20, 170, 300, 20);
+        _aviso.SetBounds(20, 278, 300, 20);
         _aviso.ForeColor = Color.FromArgb(164, 38, 44);
         _aviso.Text = "";
         Añadir(_aviso);
 
         // --------------------------------------------------------- botones
-        var cancelar = new Button { Bounds = new Rectangle(146, 194, 82, 30), Text = "Cancelar" };
+        var cancelar = new Button { Bounds = new Rectangle(146, 302, 82, 30), Text = "Cancelar" };
         cancelar.FlatStyle = FlatStyle.Flat;
         cancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 198, 196);
         cancelar.BackColor = Color.White;
@@ -96,7 +119,7 @@ public class DialogoAjustes : Form
         cancelar.DialogResult = DialogResult.Cancel;
         Añadir(cancelar);
 
-        _guardar.SetBounds(236, 194, 84, 30);
+        _guardar.SetBounds(236, 302, 84, 30);
         _guardar.Text = "Guardar";
         _guardar.FlatStyle = FlatStyle.Flat;
         _guardar.FlatAppearance.BorderSize = 0;
@@ -156,6 +179,12 @@ public class DialogoAjustes : Form
 
         if (_pausa.SelectedItem is OpcionPresencia p)
             _ajustes.PausaDisponibilidad = p.Disponibilidad;
+
+        // Al desactivarlo se olvida la marca del día: si se vuelve a activar más tarde,
+        // el automatismo puede saltar hoy mismo en vez de esperar a mañana.
+        if (_ajustes.FicharAlDesbloquear && !_autoFichaje.Checked)
+            _ajustes.UltimoAutoFichaje = null;
+        _ajustes.FicharAlDesbloquear = _autoFichaje.Checked;
 
         _ajustes.Guardar();
         DialogResult = DialogResult.OK;

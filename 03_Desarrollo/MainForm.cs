@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using Microsoft.Win32;
 
 namespace MiJornada;
 
@@ -27,6 +28,12 @@ public class MainForm : Form
 
     private readonly Button _btnAjustes = new();
     private readonly ToolTip _pista = new();
+
+    // Icono de bandeja: el estatico cuando no hay jornada, y uno dibujado al vuelo mientras
+    // corre, para ver cuanto queda sin abrir la ventana.
+    private readonly Icon _iconoEstatico = Iconos.Cargar(16);
+    private Icon? _iconoDinamico;
+    private int _ultimoPorcentajePintado = -1;
 
     private bool _cerrandoDeVerdad;
     private bool _finalizando;
@@ -103,13 +110,18 @@ public class MainForm : Form
         Icon = Iconos.Cargar(32);
 
         // -------------------------------------------------------------- bandeja
-        _tray.Icon = Iconos.Cargar(16);
+        _tray.Icon = _iconoEstatico;
         _tray.Text = "Mi jornada";
         _tray.DoubleClick += (_, _) => Restaurar();
         var menu = new ContextMenuStrip();
         menu.Items.Add("Abrir", null, (_, _) => Restaurar());
         menu.Items.Add("Salir", null, (_, _) => { _cerrandoDeVerdad = true; Close(); });
         _tray.ContextMenuStrip = menu;
+
+        // ------------------------------------------------ fichaje automatico
+        // SystemEvents guarda una referencia estatica: hay que darse de baja al cerrar
+        // (ver OnFormClosing) o el manejador seguiria vivo sobre un formulario ya destruido.
+        SystemEvents.SessionSwitch += Sesion_Cambiada;
 
         // ---------------------------------------------------------------- reloj
         _reloj.Interval = 1000;
@@ -121,6 +133,52 @@ public class MainForm : Form
             _estado.Limpiar();
 
         Refrescar();
+    }
+
+    // -------------------------------------------------------- fichaje automático
+
+    private void Sesion_Cambiada(object? sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason != SessionSwitchReason.SessionUnlock) return;
+
+        // SystemEvents notifica en un hilo del pool. Tocar la interfaz desde ahí revienta,
+        // así que se vuelve al hilo de la ventana antes de hacer nada.
+        if (IsHandleCreated && !IsDisposed) BeginInvoke(FicharAlDesbloquearAsync);
+    }
+
+    private async void FicharAlDesbloquearAsync()
+    {
+        try
+        {
+            if (!_ajustes.FicharAlDesbloquear) return;
+
+            // Ya hay algo en marcha: desbloquear no debe tocarlo.
+            if (_estado.Situacion != EstadoJornada.SinFichar) return;
+
+            // Una vez al día: volver del café no vuelve a fichar. Y si hoy se canceló la
+            // jornada a propósito, tampoco: cancelar significa "hoy no quiero estar fichado".
+            if (_ajustes.UltimoAutoFichaje?.Date == DateTime.Today) return;
+
+            if (!await IniciarAsync()) return;   // si Graph falla, el intento de hoy no se gasta
+
+            _ajustes.UltimoAutoFichaje = DateTime.Today;
+            _ajustes.Guardar();
+
+            // Solo se avisa si la ventana no está a la vista: si lo está, ya se ve la cuenta
+            // atrás corriendo y un globo sobraría (además dejaría el icono de bandeja puesto).
+            if (!Visible)
+            {
+                _tray.Visible = true;
+                _tray.ShowBalloonTip(5000, "Jornada iniciada",
+                    $"Estás disponible. Termina a las {_estado.Fin:HH:mm}.", ToolTipIcon.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            // async void: una excepción aquí tumbaría el proceso, y con él la jornada.
+            MessageBox.Show(this, ex.Message, "No se pudo fichar al desbloquear",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     // ------------------------------------------------------------------ ajustes
@@ -199,6 +257,36 @@ public class MainForm : Form
         }
 
         _tray.Text = _lblRotulo.Text.Length > 60 ? "Mi jornada" : _lblRotulo.Text;
+        ActualizarIconoBandeja();
+    }
+
+    /// <summary>
+    /// Dibuja el anillo en el icono de la bandeja para poder ver el avance sin abrir la ventana.
+    /// </summary>
+    private void ActualizarIconoBandeja()
+    {
+        if (_estado.Situacion == EstadoJornada.SinFichar)
+        {
+            if (_ultimoPorcentajePintado == -1) return;   // ya está puesto el estático
+            _ultimoPorcentajePintado = -1;
+            _tray.Icon = _iconoEstatico;
+            _iconoDinamico?.Dispose();
+            _iconoDinamico = null;
+            return;
+        }
+
+        // Solo se redibuja cuando cambia el porcentaje. A un icono por segundo durante siete
+        // horas serían 25.000 iconos para 100 imágenes distintas.
+        var porcentaje = (int)Math.Round(_estado.Fraccion * 100);
+        if (porcentaje == _ultimoPorcentajePintado) return;
+        _ultimoPorcentajePintado = porcentaje;
+
+        var color = _estado.Situacion == EstadoJornada.Pausada ? Ambar : Morado;
+        var nuevo = IconoAnillo.Crear(_estado.Fraccion, color, Pista, SystemInformation.SmallIconSize);
+
+        _tray.Icon = nuevo;              // primero se asigna...
+        _iconoDinamico?.Dispose();       // ...y después se suelta el anterior
+        _iconoDinamico = nuevo;
     }
 
     private static void EstiloPrimario(Button b, string texto)
@@ -232,15 +320,18 @@ public class MainForm : Form
         }
     }
 
-    private async Task IniciarAsync()
+    /// <returns>Cierto si se llego a fichar. El fichaje automatico lo necesita para no
+    /// consumir el intento del dia cuando la llamada a Graph ha fallado.</returns>
+    private async Task<bool> IniciarAsync()
     {
-        if (!await CambiarPresenciaAsync("Available", "Available")) return;
+        if (!await CambiarPresenciaAsync("Available", "Available")) return false;
 
         _estado.Situacion = EstadoJornada.Activa;
         _estado.Fin = DateTime.Now + Config.Jornada;
         _estado.PausaDesde = null;
         _estado.Guardar();
         Refrescar();
+        return true;
     }
 
     private async Task PausarAsync()
@@ -352,7 +443,11 @@ public class MainForm : Form
             return;
         }
 
+        SystemEvents.SessionSwitch -= Sesion_Cambiada;
         _tray.Visible = false;
+        _tray.Icon = null;
+        _iconoDinamico?.Dispose();
+        _iconoEstatico.Dispose();
         base.OnFormClosing(e);
     }
 }
