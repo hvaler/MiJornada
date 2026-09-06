@@ -31,10 +31,28 @@ Se ejecuto `MiJornada.exe --minutos 2` y se capturo la ventana con `PrintWindow`
 | Boton principal y rotulo | ✅ "Sin fichar" + "Iniciar jornada" en morado |
 | Cierre con jornada en `SinFichar` | ✅ `WM_CLOSE` termina el proceso, como debe |
 
-**Sigue SIN comprobar** (requiere pulsar el boton, lo que autentica y **cambia la presencia real**
-en Teams): el flujo de codigo de dispositivo, la llamada a Graph, DT-005 (`async void`), DT-006
-(`Clipboard` vacio), el globo de notificacion, la bandeja, y el ciclo pausa/reanudar/cancelar.
-DT-007 (parpadeo) no es evaluable en una captura estatica: hay que mirar la ventana unos segundos.
+### Ciclo completo verificado — 2026-09-06
+
+Se ejecuto el ciclo entero con `--minutos 2`, autenticando de verdad y cambiando la presencia real.
+
+| Comprobado | Resultado |
+|---|---|
+| Codigo de dispositivo | ✅ Dialogo con el codigo, navegador abierto, login completado |
+| Cache de token (DPAPI) | ✅ `%APPDATA%/MiJornada/msal.cache` creado (8342 bytes) |
+| POST a Graph — inicio | ✅ Presencia a `Available`. Si hubiera fallado, `CambiarPresenciaAsync` habria devuelto `false` y la jornada no habria arrancado |
+| Persistencia | ✅ `estado.json` con `Situacion:1` y la hora de fin absoluta |
+| Cuenta atras | ✅ Decrementa correctamente contra el reloj real |
+| Anillo en marcha | ✅ Morado, mostrando **lo que queda** (PAT-003), extremo redondeado |
+| Maquina de estados | ✅ El boton pasa a "Pausar" y aparece "Cancelar jornada" |
+| POST a Graph — fin | ✅ **Verificado leyendo `GET /me/presence`: `Offline` / `OffWork`** |
+| Reset al terminar | ✅ `estado.json` vuelve a `Situacion:0`, UI a "Sin fichar" |
+| Estabilidad | ✅ El proceso sobrevive al ciclo completo sin excepciones |
+| **DT-006** (`Clipboard` vacio) | ✅ No se manifiesta: el codigo llego con contenido |
+| **DT-005** (`async void`) | ⚠️ El camino feliz funciona. El riesgo real —una excepcion en `Estado.Guardar()`— **no se ha ejercitado** |
+
+**Sin comprobar todavia**: el ciclo **pausa/reanudar** y **cancelar**; el globo de notificacion al
+terminar; el comportamiento de bandeja al cerrar con jornada activa; y **DT-007** (parpadeo del
+anillo), que no es evaluable con capturas — hay que mirar la ventana unos segundos.
 
 ---
 

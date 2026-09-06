@@ -127,7 +127,7 @@
       "produccion"
     ],
     "sprint_actual": null,
-    "version_actual": "0.0.0",
+    "version_actual": "0.1.0",
     "ultima_actualizacion": "2026-09-06",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
@@ -231,12 +231,12 @@
   },
   "desarrollo": {
     "modulos_en_desarrollo": [
-      "Aplicacion completa (compila y configurada; pendiente del primer arranque real)"
+      "Aplicacion completa: compila y el ciclo iniciar/contar/finalizar esta verificado contra Graph"
     ],
     "funcionalidades_en_progreso": [],
     "bloqueadores": [],
     "proxima_entrega": null,
-    "notas_sprint": "Onboarding, primer build verde y registro propio en Entra ID, todo el 2026-09-06. La app compila sin advertencias y tiene ClientId y tenant reales. Lo unico que le falta es haberse ejecutado alguna vez: DT-004 a DT-007 (transparencia de etiquetas, Clipboard vacio, globo de notificacion, parpadeo del anillo) solo se ven arrancandola."
+    "notas_sprint": "2026-09-06: onboarding, primer build, registro propio en Entra y primera ejecucion real. El ciclo completo funciona de punta a punta, confirmado leyendo GET /me/presence (Offline/OffWork). Quedan por ejercitar pausa/reanudar, cancelar, el globo de notificacion y la bandeja."
   },
   "evolutivoActivo": null,
   "evolutivos": {
@@ -266,13 +266,10 @@
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
-    "proximoPaso": "Primer arranque real: MiJornada.exe --minutos 2 con Teams abierto, y verificar DT-004 a DT-007",
-    "resumenSesion": "Onboarding al ecosistema Ovillo, repositorio en GitHub, primer dotnet build (verde a la primera), diagnostico de la autenticacion (equipo no unido a Entra: el codigo de dispositivo es obligatorio) y registro de aplicacion propio creado desde PowerShell.",
+    "proximoPaso": "Probar pausa/reanudar, cancelar jornada y el comportamiento de bandeja al cerrar con jornada activa",
+    "resumenSesion": "Onboarding al ecosistema Ovillo, repositorio en GitHub, primer build verde, registro propio en Entra ID creado desde PowerShell y PRIMERA EJECUCION REAL: el ciclo iniciar/contar/finalizar funciona y se ha verificado contra Graph.",
     "archivosModificados": [
-      "_hilo/ESTADO_PROYECTO.json",
-      "_hilo/METRICAS.json",
-      "03_Desarrollo/Estado.cs (ClientId y tenant reales)",
-      "02_Entorno/crear-registro-entra.ps1 (nuevo)"
+      "_hilo/METRICAS.json"
     ],
     "notas": "No se ha tocado el codigo de la aplicacion: el alcance acordado era solo onboarding."
   },
@@ -286,8 +283,7 @@
   "alertas": {
     "_doc": "Claude muestra estas alertas al iniciar sesion",
     "activas": [
-      "La aplicacion COMPILA y esta CONFIGURADA (ClientId y tenant reales), pero NUNCA se ha ejecutado. DT-004 a DT-007 son riesgos de runtime aun sin verificar.",
-      "Primer arranque pendiente: MiJornada.exe --minutos 2, con Teams abierto (sin sesion de presencia activa el cambio no se ve)."
+      "Ciclo completo VERIFICADO el 2026-09-06 contra Graph (presencia real cambiada y leida de vuelta). Pendientes de probar: pausa/reanudar, cancelar, globo de notificacion, bandeja al cerrar con jornada activa y DT-007 (parpadeo)."
     ]
   },
   "historial_modos": [
