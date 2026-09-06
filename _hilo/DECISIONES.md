@@ -69,25 +69,53 @@ flujos, sin licencia.
 ### ADR-002: Flujo de codigo de dispositivo, no interactivo
 
 **Estado**: Aceptada · **Fecha**: 2026-09-06 · **Categoria**: Seguridad
+**Revisada**: 2026-09-06 — se anade la causa raiz y se descartan las alternativas
 
 #### Contexto
 
 El flujo interactivo normal de MSAL falla en este tenant con
-`Error response came from MDM terms of use page`, por las politicas de acceso condicional en
-equipos no gestionados.
+`Error response came from MDM terms of use page`.
+
+**Causa raiz (verificada el 2026-09-06 con `dsregcmd /status`)**: el equipo de desarrollo **no
+esta unido a Entra ID de ninguna forma**.
+
+```
+AzureAdJoined : NO      DomainJoined     : NO
+EnterpriseJoined : NO   WorkplaceJoined  : NO
+```
+
+Es una maquina personal sin gestionar, y la politica de acceso condicional de la organizacion
+exige dispositivo gestionado. **El error no es un fallo de la aplicacion ni un problema de
+configuracion del registro**: es una politica del tenant que ninguna linea de codigo puede
+sortear.
 
 #### Decision
 
-Usar `AcquireTokenWithDeviceCode`. **No es un capricho ni una preferencia estetica**: es el unico
-que se ha comprobado que funciona aqui.
+Usar `AcquireTokenWithDeviceCode`. **No es un capricho ni una preferencia estetica**: es el flujo
+que Microsoft recomienda explicitamente para equipos sin acceso a navegador o sin gestionar, y el
+unico que se ha comprobado que funciona aqui.
 
 #### Consecuencias
 
 - Funciona en equipos no gestionados.
 - La primera vez hay que copiar un codigo y pegarlo en el navegador. Despues el token se cachea
-  con DPAPI y no vuelve a pedirse hasta que caduque el refresh.
+  con DPAPI y no vuelve a pedirse hasta que caduque el refresh (del orden de 90 dias).
 
-> **No cambiar a interactivo "para mejorar la experiencia"**: ya se probo y no funciona.
+#### Alternativas descartadas
+
+Las tres se evaluaron el 2026-09-06 a raiz de la pregunta "¿no puede pedirme usuario y
+contrasena, como cuando me conecto a las aplicaciones?".
+
+| Alternativa | Por que no |
+|---|---|
+| **Caja de usuario/contrasena en la propia app** (ROPC, `AcquireTokenByUsernamePassword`) | Microsoft la documenta como **incompatible con Acceso Condicional y con MFA** por diseno: no hay interaccion donde meter el segundo factor. El mismo muro que obligo al codigo de dispositivo la invalida. Ademas esta **deprecada** por riesgo de seguridad |
+| **Flujo interactivo** (`AcquireTokenInteractive`, la pantalla de login de Microsoft) | Es lo que falla. Causa raiz arriba: dispositivo no gestionado |
+| **WAM / broker de Windows** (`Microsoft.Identity.Client.Broker`, el selector de cuentas del sistema) | Es lo que hace que Teams u Outlook no pidan contrasena en un portatil corporativo, pero **se apoya en que el dispositivo tenga identidad propia en Entra**, que es justo lo que a esta maquina le falta. Caeria al navegador y chocaria con la misma politica |
+
+> **No volver a plantear ninguna de las tres sin comprobar antes `dsregcmd /status`.** Lo que
+> cambiaria el panorama no es codigo: seria unir el equipo a Entra ID (Configuracion de Windows →
+> Cuentas → Acceder al trabajo o escuela). Eso da a la organizacion capacidad de gestion sobre un
+> equipo personal, asi que es una **decision del usuario, no tecnica**.
 
 ---
 

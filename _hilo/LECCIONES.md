@@ -16,7 +16,7 @@
 |---|---------|-----------|
 | 1 | La ruta `/me/presence/setUserPreferredPresence` devuelve **404 con cuerpo vacio**: hay que usar la ruta con el object ID explicito | Error |
 | 2 | `setUserPreferredPresence` **no falla y no hace nada** si Teams no esta abierto en algun dispositivo | Tecnica |
-| 3 | El flujo interactivo de MSAL falla en este tenant por acceso condicional: usar codigo de dispositivo | Error |
+| 3 | El equipo **no esta unido a Entra ID**: por eso falla el interactivo, y por eso ni ROPC ni WAM son alternativas. Comprobar con `dsregcmd /status` | Error |
 | 4 | El tiempo restante se calcula **restando contra el reloj real**, nunca decrementando un contador | Patron |
 | 5 | En WinForms, un `Label` con `BackColor = Transparent` pinta el fondo de su **padre**, no lo que hay debajo | Tecnica |
 
@@ -111,10 +111,44 @@ Y anadir la plataforma "Aplicaciones moviles y de escritorio" con la URI
 
 **Sintoma**: el flujo interactivo de MSAL falla al abrir el navegador.
 
-**Causa**: politicas de acceso condicional del tenant en equipos no gestionados.
+**Causa raiz** (verificada el 2026-09-06): el equipo **no esta unido a Entra ID de ninguna forma**
+y la politica de acceso condicional del tenant exige dispositivo gestionado. Se comprueba en dos
+segundos:
 
-**Solucion**: usar el flujo de **codigo de dispositivo**. No hay forma de arreglar el interactivo
-desde la aplicacion. Ver ADR-002.
+```powershell
+dsregcmd /status | Select-String 'AzureAdJoined|DomainJoined|WorkplaceJoined'
+```
+
+Si los tres dicen `NO`, el flujo interactivo **no va a funcionar**, y no hay configuracion del
+registro de Entra ni linea de codigo que lo cambie: es politica del tenant.
+
+**Solucion**: flujo de **codigo de dispositivo**. Ver ADR-002.
+
+**Fecha**: 2026-09-06
+
+---
+
+### ERR-005: Ni ROPC ni WAM son alternativas al codigo de dispositivo aqui
+
+**Contexto**: la pregunta que sale sola al ver el codigo de dispositivo es "¿no puede pedirme
+usuario y contrasena, como en las demas aplicaciones?". La respuesta es no, por dos motivos
+distintos que conviene no confundir.
+
+**Una caja de usuario/contrasena en la app** (ROPC, `AcquireTokenByUsernamePassword`) es
+**incompatible con Acceso Condicional y con MFA por diseno**: al no haber interaccion, no hay
+donde meter el segundo factor. Este tenant tiene acceso condicional — es exactamente lo que
+rompio el flujo interactivo — asi que el mismo obstaculo invalida esta via. Microsoft ademas la
+tiene **deprecada** por riesgo de seguridad.
+
+**El selector de cuentas de Windows** (WAM, paquete `Microsoft.Identity.Client.Broker`) es lo que
+hace que Teams u Outlook no pidan contrasena en un portatil corporativo, pero funciona porque el
+**dispositivo** tiene identidad propia en Entra y la presenta por el usuario. En una maquina no
+unida (ver ERR-003) MSAL cae al navegador y se topa con la misma politica. Nota tecnica por si
+algun dia el equipo se une: WAM exigiria ademas cambiar el TFM a `net8.0-windows10.0.17763.0` y
+registrar la URI `ms-appx-web://microsoft.aad.brokerplugin/{ClientId}`.
+
+**Regla practica**: antes de proponer cualquier cambio de flujo de autenticacion en este
+proyecto, ejecutar `dsregcmd /status`. Si el equipo sigue sin unir, la respuesta ya esta dada.
 
 **Fecha**: 2026-09-06
 
