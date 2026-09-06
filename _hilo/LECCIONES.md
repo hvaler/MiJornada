@@ -363,6 +363,57 @@ por usuario (por eso es idempotente y comprueba si ya existe).
 
 ---
 
+### TEC-010: Como verificar la presencia de verdad, y como devolverla a su sitio
+
+Probar esta aplicacion **cambia la presencia real** del usuario, que sus companeros ven. Dos
+cosas que conviene tener a mano.
+
+**Verificar el estado real** (no fiarse de que la llamada no diera error):
+
+```powershell
+Invoke-MgGraphRequest -Method GET -OutputType PSObject -Uri 'https://graph.microsoft.com/v1.0/me/presence'
+```
+
+Ojo: para **leer**, `/me/presence` **si funciona**. Es solo `setUserPreferredPresence` la que
+exige la ruta con object ID explicito (ERR-001).
+
+**Devolver el control a Teams** al terminar de probar:
+
+```powershell
+$me = Invoke-MgGraphRequest -Method GET -OutputType PSObject -Uri 'https://graph.microsoft.com/v1.0/me'
+Invoke-MgGraphRequest -Method POST -Uri "https://graph.microsoft.com/v1.0/users/$($me.id)/presence/clearUserPreferredPresence"
+```
+
+Sin esto el estado preferido **persiste** (TEC-004) y el usuario se queda marcado como "Fuera del
+trabajo" indefinidamente. Verificado el 2026-09-06: tras limpiarlo, Teams volvio a calcular
+`Available` por su cuenta.
+
+**Fecha**: 2026-09-06
+
+---
+
+### TEC-011: Conducir la interfaz WinForms desde PowerShell para probarla
+
+Se puede automatizar la aplicacion con UIAutomation, lo que permite verificar el ciclo completo
+sin depender de que alguien haga clic:
+
+- **Botones**: `InvokePattern.Invoke()` funciona.
+- **`LinkLabel` NO soporta `InvokePattern`**. "Cancelar jornada" es un `LinkLabel`: hay que
+  pulsarlo con un clic real de raton sobre su `BoundingRectangle` (`SetCursorPos` + `mouse_event`),
+  guardando y restaurando antes la posicion del cursor.
+- **Capturar la ventana**: `PrintWindow(h, hdc, 2)` (`PW_RENDERFULLCONTENT`) captura el contenido
+  aunque la ventana este detras de otras. `CopyFromScreen` **no vale**: Windows bloquea
+  `SetForegroundWindow` desde un proceso en segundo plano y acabas capturando lo que hubiera
+  encima.
+- **`MainWindowHandle` vale 0 cuando la ventana esta oculta**, no solo cuando no existe. Con esta
+  app eso es informacion util: significa que se fue a la bandeja.
+- Al declarar P/Invoke de `GetWindowTextW`, poner `CharSet=CharSet.Unicode`. Sin eso los titulos
+  se leen como ANSI y salen truncados a la primera letra.
+
+**Fecha**: 2026-09-06
+
+---
+
 ## 4. Preferencias del proyecto
 
 ### PREF-001: Sin arquitectura de mas

@@ -50,9 +50,32 @@ Se ejecuto el ciclo entero con `--minutos 2`, autenticando de verdad y cambiando
 | **DT-006** (`Clipboard` vacio) | ✅ No se manifiesta: el codigo llego con contenido |
 | **DT-005** (`async void`) | ⚠️ El camino feliz funciona. El riesgo real —una excepcion en `Estado.Guardar()`— **no se ha ejercitado** |
 
-**Sin comprobar todavia**: el ciclo **pausa/reanudar** y **cancelar**; el globo de notificacion al
-terminar; el comportamiento de bandeja al cerrar con jornada activa; y **DT-007** (parpadeo del
-anillo), que no es evaluable con capturas — hay que mirar la ventana unos segundos.
+### Pausa, cancelacion y bandeja — verificado 2026-09-06
+
+| Comprobado | Resultado |
+|---|---|
+| Token cacheado entre arranques | ✅ El segundo arranque **no pide login**: `AcquireTokenSilent` resuelve |
+| **Pausa** | ✅ Cuenta atras congelada en `00:04:35` durante 20 s. `Situacion:2`, `PausaDesde` puesto y **`Fin` SIN tocar** (ADR-005) |
+| Anillo en pausa | ✅ Ambar, con la cifra congelada |
+| **Reanudar** | ✅ Pausa de **51 s** → `Fin` desplazado **exactamente 51 s** (13:00:49 → 13:01:40). Con precision de segundos, no redondeando a minutos como la version de Power Apps |
+| Confirmacion de cancelar | ✅ Dialogo "¿Seguro que quieres cancelar la jornada?" con Si/No |
+| Cancelar → **No** | ✅ No destruye nada: la jornada sigue activa |
+| Cancelar → **Si** | ✅ `Situacion:0`, UI reseteada, presencia a `Offline`/`OffWork` |
+| **Cerrar con jornada activa** | ✅ La ventana se oculta y **el proceso sigue vivo** (ADR-006) |
+| **Fin de jornada DESDE LA BANDEJA** | ✅ **La prueba clave**: con la ventana oculta, la jornada termino sola a su hora y puso la presencia en `Offline`/`OffWork`, confirmado leyendo `GET /me/presence` |
+| Cierre con `SinFichar` | ✅ Termina el proceso, sin dejar zombis |
+
+**Metodo**: se condujo la interfaz con UIAutomation y se leyo la presencia real contra Graph
+despues de cada transicion. No es inferencia: es el estado que ve Teams.
+
+Al terminar se restauro la presencia del usuario con `clearUserPreferredPresence`.
+
+**Sigue SIN comprobar**, y son cosas que necesitan un humano mirando la pantalla:
+
+- **DT-007** (parpadeo del anillo): no es evaluable con capturas estaticas.
+- **El globo de notificacion** al terminar la jornada.
+- **DT-005**: solo se ha ejercitado el camino feliz. El riesgo real —una excepcion dentro de
+  `Estado.Guardar()` en un manejador `async void`— no se ha provocado.
 
 ---
 

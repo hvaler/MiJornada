@@ -127,7 +127,7 @@
       "produccion"
     ],
     "sprint_actual": null,
-    "version_actual": "0.1.0",
+    "version_actual": "0.2.0",
     "ultima_actualizacion": "2026-09-06",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
@@ -230,13 +230,11 @@
     }
   },
   "desarrollo": {
-    "modulos_en_desarrollo": [
-      "Aplicacion completa: compila y el ciclo iniciar/contar/finalizar esta verificado contra Graph"
-    ],
+    "modulos_en_desarrollo": [],
     "funcionalidades_en_progreso": [],
     "bloqueadores": [],
     "proxima_entrega": null,
-    "notas_sprint": "2026-09-06: onboarding, primer build, registro propio en Entra y primera ejecucion real. El ciclo completo funciona de punta a punta, confirmado leyendo GET /me/presence (Offline/OffWork). Quedan por ejercitar pausa/reanudar, cancelar, el globo de notificacion y la bandeja."
+    "notas_sprint": "2026-09-06: de 'nunca compilado' a funcionalmente verificado en una sesion. Onboarding, build, registro propio en Entra y pruebas de la maquina de estados completa contra la API real. Lo unico sin comprobar son dos detalles visuales (parpadeo del anillo y globo de notificacion) que exigen mirar la pantalla."
   },
   "evolutivoActivo": null,
   "evolutivos": {
@@ -266,8 +264,8 @@
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
-    "proximoPaso": "Probar pausa/reanudar, cancelar jornada y el comportamiento de bandeja al cerrar con jornada activa",
-    "resumenSesion": "Onboarding al ecosistema Ovillo, repositorio en GitHub, primer build verde, registro propio en Entra ID creado desde PowerShell y PRIMERA EJECUCION REAL: el ciclo iniciar/contar/finalizar funciona y se ha verificado contra Graph.",
+    "proximoPaso": "Confirmar a ojo DT-007 (parpadeo) y el globo de notificacion. Despues, backlog de mejoras: icono propio, duracion configurable, fichaje automatico al desbloquear.",
+    "resumenSesion": "Onboarding al ecosistema Ovillo, repositorio en GitHub, primer build verde, registro propio en Entra ID y verificacion funcional completa: iniciar, pausar, reanudar, cancelar y fin de jornada desde la bandeja, todo contrastado leyendo la presencia real en Microsoft Graph. Presencia del usuario restaurada al terminar.",
     "archivosModificados": [
       "_hilo/METRICAS.json"
     ],
@@ -283,7 +281,7 @@
   "alertas": {
     "_doc": "Claude muestra estas alertas al iniciar sesion",
     "activas": [
-      "Ciclo completo VERIFICADO el 2026-09-06 contra Graph (presencia real cambiada y leida de vuelta). Pendientes de probar: pausa/reanudar, cancelar, globo de notificacion, bandeja al cerrar con jornada activa y DT-007 (parpadeo)."
+      "Ciclo completo verificado contra Graph el 2026-09-06: iniciar, pausar, reanudar, cancelar y fin desde la bandeja. Quedan solo DT-007 (parpadeo) y el globo de notificacion, que necesitan una persona mirando la pantalla."
     ]
   },
   "historial_modos": [
