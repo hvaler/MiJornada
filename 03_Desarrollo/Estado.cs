@@ -23,8 +23,117 @@ public static class Config
 
     public static readonly string[] Scopes = { "Presence.ReadWrite" };
 
-    /// <summary>Duración de la jornada. Bajar a minutos para probar.</summary>
+    /// <summary>
+    /// Duración de la jornada en curso. Sale de <see cref="Ajustes"/>, salvo que se haya
+    /// pasado <c>--minutos N</c>, que manda sobre todo lo demás.
+    /// </summary>
     public static TimeSpan Jornada { get; set; } = TimeSpan.FromHours(7);
+
+    /// <summary>
+    /// Cierto si la duración viene de <c>--minutos</c>. La interfaz deshabilita el selector
+    /// en ese caso: cambiarlo no tendría efecto y sería confuso.
+    /// </summary>
+    public static bool JornadaForzada { get; set; }
+}
+
+/// <summary>
+/// Preferencias del usuario. Van en su propio fichero y no en <see cref="Estado"/> porque
+/// sobreviven a <see cref="Estado.Limpiar"/>: cancelar una jornada no debe olvidar que tu
+/// jornada dura 6 horas.
+/// </summary>
+public class Ajustes
+{
+    /// <summary>Duración de la jornada en minutos. 420 = 7 h.</summary>
+    public int DuracionMinutos { get; set; } = 420;
+
+    /// <summary>
+    /// Presencia que se pone al pausar. Se guarda la clave de Graph, no la etiqueta traducida,
+    /// para que un cambio de textos no invalide los ajustes ya guardados.
+    /// </summary>
+    public string PausaDisponibilidad { get; set; } = "Away";
+
+    [JsonIgnore]
+    public TimeSpan Duracion => TimeSpan.FromMinutes(Math.Clamp(DuracionMinutos, 1, 24 * 60));
+
+    /// <summary>Opción de pausa correspondiente, o Ausente si lo guardado ya no existe.</summary>
+    [JsonIgnore]
+    public OpcionPresencia Pausa =>
+        Array.Find(OpcionPresencia.ParaPausa, o => o.Disponibilidad == PausaDisponibilidad)
+        ?? OpcionPresencia.ParaPausa[0];
+
+    private static readonly string Fichero = Path.Combine(Rutas.Carpeta, "ajustes.json");
+
+    public static Ajustes Cargar()
+    {
+        try
+        {
+            if (File.Exists(Fichero))
+                return JsonSerializer.Deserialize<Ajustes>(File.ReadAllText(Fichero)) ?? new Ajustes();
+        }
+        catch
+        {
+            // Unos ajustes corruptos no deben impedir arrancar: se vuelve a los de fábrica.
+        }
+        return new Ajustes();
+    }
+
+    public void Guardar()
+    {
+        Directory.CreateDirectory(Rutas.Carpeta);
+        File.WriteAllText(Fichero, JsonSerializer.Serialize(this,
+            new JsonSerializerOptions { WriteIndented = true }));
+    }
+}
+
+/// <summary>
+/// Una pareja disponibilidad/actividad de las que Graph acepta, con su nombre en castellano.
+/// Las parejas no son libres: hay que usar las combinaciones válidas (ver _hilo/DEPENDENCIAS.md).
+/// </summary>
+public record OpcionPresencia(string Etiqueta, string Disponibilidad, string Actividad)
+{
+    // El ComboBox muestra esto
+    public override string ToString() => Etiqueta;
+
+    /// <summary>Estados que tienen sentido al pausar. No se ofrece "Fuera del trabajo": ese
+    /// es el del final de la jornada, y ponerlo en una pausa daría a entender que has terminado.</summary>
+    public static readonly OpcionPresencia[] ParaPausa =
+    [
+        new("Ausente",          "Away",         "Away"),
+        new("Vuelvo enseguida", "BeRightBack",  "BeRightBack"),
+        new("Ocupado",          "Busy",         "Busy"),
+        new("No molestar",      "DoNotDisturb", "DoNotDisturb"),
+    ];
+}
+
+/// <summary>Carpeta de datos de la aplicación, compartida por estado, ajustes y caché de token.</summary>
+public static class Rutas
+{
+    public static readonly string Carpeta = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MiJornada");
+}
+
+/// <summary>Icono propio de la aplicación, incrustado como recurso.</summary>
+public static class Iconos
+{
+    private const string Recurso = "MiJornada.mijornada.ico";
+
+    /// <summary>
+    /// Devuelve el marco del tamaño pedido. Un <c>.ico</c> multi-resolución tiene varios y
+    /// Windows elige mal si no se le indica: 16 px para la bandeja, 32 para la ventana.
+    /// </summary>
+    public static Icon Cargar(int px)
+    {
+        try
+        {
+            using var s = typeof(Iconos).Assembly.GetManifestResourceStream(Recurso);
+            if (s is not null) return new Icon(s, px, px);
+        }
+        catch
+        {
+            // Si el recurso faltara, mejor un icono feo que no arrancar.
+        }
+        return SystemIcons.Application;
+    }
 }
 
 public enum EstadoJornada { SinFichar, Activa, Pausada }
@@ -57,10 +166,7 @@ public class Estado
 
     // ---------------------------------------------------------------- persistencia
 
-    private static readonly string Carpeta = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MiJornada");
-
-    private static readonly string Fichero = Path.Combine(Carpeta, "estado.json");
+    private static readonly string Fichero = Path.Combine(Rutas.Carpeta, "estado.json");
 
     public static Estado Cargar()
     {
@@ -78,7 +184,7 @@ public class Estado
 
     public void Guardar()
     {
-        Directory.CreateDirectory(Carpeta);
+        Directory.CreateDirectory(Rutas.Carpeta);
         File.WriteAllText(Fichero, JsonSerializer.Serialize(this,
             new JsonSerializerOptions { WriteIndented = true }));
     }

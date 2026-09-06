@@ -33,11 +33,9 @@ public class PresenciaService
     {
         if (_cacheRegistrada) return;
 
-        var carpeta = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MiJornada");
-        Directory.CreateDirectory(carpeta);
+        Directory.CreateDirectory(Rutas.Carpeta);
 
-        var propiedades = new StorageCreationPropertiesBuilder("msal.cache", carpeta).Build();
+        var propiedades = new StorageCreationPropertiesBuilder("msal.cache", Rutas.Carpeta).Build();
         var helper = await MsalCacheHelper.CreateAsync(propiedades);
         helper.RegisterCache(_app.UserTokenCache);
 

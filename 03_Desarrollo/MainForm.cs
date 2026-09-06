@@ -13,6 +13,7 @@ public class MainForm : Form
     private static readonly Color Rojo = Color.FromArgb(164, 38, 44);
 
     private readonly Estado _estado = Estado.Cargar();
+    private readonly Ajustes _ajustes = Ajustes.Cargar();
     private readonly Lazy<PresenciaService> _presenciaLazy = new(() => new PresenciaService());
     private PresenciaService Presencia => _presenciaLazy.Value;
 
@@ -23,6 +24,9 @@ public class MainForm : Form
     private readonly LinkLabel _lnkCancelar = new();
     private readonly System.Windows.Forms.Timer _reloj = new();
     private readonly NotifyIcon _tray = new();
+
+    private readonly Button _btnAjustes = new();
+    private readonly ToolTip _pista = new();
 
     private bool _cerrandoDeVerdad;
     private bool _finalizando;
@@ -73,8 +77,33 @@ public class MainForm : Form
         _lnkCancelar.Click += Cancelar_Click;
         Controls.Add(_lnkCancelar);
 
+        // ------------------------------------------------------------- ajustes
+        // Discreto y arriba a la derecha: la pantalla principal se queda con el anillo y el
+        // botón, y la configuración crece aquí dentro sin ensuciarla.
+        _btnAjustes.SetBounds(298, 8, 30, 30);
+        _btnAjustes.FlatStyle = FlatStyle.Flat;
+        _btnAjustes.FlatAppearance.BorderSize = 0;
+        _btnAjustes.BackColor = Color.White;
+        _btnAjustes.ForeColor = Gris;
+        _btnAjustes.FlatAppearance.MouseOverBackColor = Color.FromArgb(243, 242, 241);
+        _btnAjustes.Cursor = Cursors.Hand;
+        _btnAjustes.TabStop = false;
+        // Segoe MDL2 Assets es la fuente de iconos del sistema en Windows 10 y 11.
+        _btnAjustes.Font = new Font("Segoe MDL2 Assets", 11f);
+        _btnAjustes.Text = "\uE713";   // engranaje de Segoe MDL2 Assets
+        _btnAjustes.Click += Ajustes_Click;
+        _pista.SetToolTip(_btnAjustes, "Ajustes");
+        // El glifo no produce nombre accesible: sin esto, un lector de pantalla no lo anuncia.
+        _btnAjustes.AccessibleName = "Ajustes";
+        Controls.Add(_btnAjustes);
+
+        // -------------------------------------------------------------- iconos
+        // El .ico lleva varias resoluciones; hay que pedir el marco adecuado a cada uso
+        // o Windows escala el que le parece y se ve borroso.
+        Icon = Iconos.Cargar(32);
+
         // -------------------------------------------------------------- bandeja
-        _tray.Icon = SystemIcons.Application;
+        _tray.Icon = Iconos.Cargar(16);
         _tray.Text = "Mi jornada";
         _tray.DoubleClick += (_, _) => Restaurar();
         var menu = new ContextMenuStrip();
@@ -91,6 +120,24 @@ public class MainForm : Form
         if (_estado.Situacion == EstadoJornada.Activa && _estado.Restante == TimeSpan.Zero)
             _estado.Limpiar();
 
+        Refrescar();
+    }
+
+    // ------------------------------------------------------------------ ajustes
+
+    private void Ajustes_Click(object? sender, EventArgs e)
+    {
+        var enMarcha = _estado.Situacion != EstadoJornada.SinFichar;
+
+        using var dlg = new DialogoAjustes(_ajustes, enMarcha);
+        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+        // --minutos manda sobre los ajustes mientras dure esta ejecución.
+        if (!Config.JornadaForzada) Config.Jornada = _ajustes.Duracion;
+
+        // Devolver el foco al botón principal: si no, el engranaje se queda con el
+        // rectángulo de foco dibujado encima.
+        _btnPrincipal.Focus();
         Refrescar();
     }
 
@@ -202,7 +249,7 @@ public class MainForm : Form
         _estado.PausaDesde = DateTime.Now;
         _estado.Guardar();
         Refrescar();
-        await CambiarPresenciaAsync("Away", "Away");
+        await CambiarPresenciaAsync(_ajustes.Pausa.Disponibilidad, _ajustes.Pausa.Actividad);
     }
 
     private async Task ReanudarAsync()

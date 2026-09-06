@@ -8,8 +8,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>MiJornada</AssemblyName>
     <RootNamespace>MiJornada</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>0.2.0</Version>
+    <!-- Icono del .exe (explorador, barra de tareas, alt-tab) -->
+    <ApplicationIcon>mijornada.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Ademas incrustado, para poder elegir el marco exacto (16 px bandeja, 32 ventana).
+         ApplicationIcon por si solo no permite hacerlo desde codigo. -->
+    <EmbeddedResource Include="mijornada.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Identity.Client" Version="4.66.2" />

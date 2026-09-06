@@ -127,7 +127,7 @@
       "produccion"
     ],
     "sprint_actual": null,
-    "version_actual": "0.2.0",
+    "version_actual": "0.3.0",
     "ultima_actualizacion": "2026-09-06",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
@@ -264,7 +264,7 @@
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
-    "proximoPaso": "Confirmar a ojo DT-007 (parpadeo) y el globo de notificacion. Despues, backlog de mejoras: icono propio, duracion configurable, fichaje automatico al desbloquear.",
+    "proximoPaso": "Confirmar a ojo DT-007 (parpadeo) y el globo. Siguiente del backlog: icono de bandeja dinamico o fichaje automatico al desbloquear.",
     "resumenSesion": "Onboarding al ecosistema Ovillo, repositorio en GitHub, primer build verde, registro propio en Entra ID y verificacion funcional completa: iniciar, pausar, reanudar, cancelar y fin de jornada desde la bandeja, todo contrastado leyendo la presencia real en Microsoft Graph. Presencia del usuario restaurada al terminar.",
     "archivosModificados": [
       "_hilo/METRICAS.json"
@@ -281,7 +281,7 @@
   "alertas": {
     "_doc": "Claude muestra estas alertas al iniciar sesion",
     "activas": [
-      "Ciclo completo verificado contra Graph el 2026-09-06: iniciar, pausar, reanudar, cancelar y fin desde la bandeja. Quedan solo DT-007 (parpadeo) y el globo de notificacion, que necesitan una persona mirando la pantalla."
+      "Verificado contra Graph el 2026-09-06: ciclo completo, pausa/reanudar, cancelar, bandeja, duracion configurable y estado de pausa. Pendiente solo DT-007 (parpadeo) y el globo de notificacion, que necesitan mirar la pantalla."
     ]
   },
   "historial_modos": [

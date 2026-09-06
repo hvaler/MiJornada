@@ -4,8 +4,9 @@
 > **Leer (Read) antes de modificar una funcionalidad documentada**; actualizar tras implementar
 > una nueva.
 
-> ⚠️ Todo lo que sigue esta **escrito pero no probado**: el proyecto nunca se ha compilado.
-> "Implementado" aqui significa "el codigo existe", no "funciona".
+> **Estado a 2026-09-06**: verificado funcionalmente contra Microsoft Graph. Lo unico sin
+> comprobar son dos detalles visuales que necesitan una persona mirando la pantalla: el parpadeo
+> del anillo (DT-007) y el globo de notificacion al terminar.
 
 ---
 
@@ -24,14 +25,14 @@ que acordarse de cambiar el estado a mano.
 
 ### M1 — Jornada (maquina de estados)
 
-**Fichero**: `Estado.cs` · **Estado**: escrito, sin compilar
+**Fichero**: `Estado.cs` · **Estado**: verificado 2026-09-06
 
 Tres situaciones: `SinFichar`, `Activa`, `Pausada`.
 
 | Accion | Efecto |
 |---|---|
 | **Iniciar jornada** | Presencia a `Available`/`Available`, se calcula y persiste la hora de fin (ahora + 7 h) |
-| **Pausar** | Congela el restante y pone `Away`/`Away`. La hora de fin **no** se toca |
+| **Pausar** | Congela el restante y pone la presencia elegida en Ajustes (`Ausente` por defecto). La hora de fin **no** se toca |
 | **Reanudar** | Desplaza la hora de fin por los minutos parados y vuelve a `Available` |
 | **Cancelar jornada** | Con confirmacion. Cierra y pone `Offline`/`OffWork` |
 | **Fin de la cuenta atras** | Presencia a `Offline`/`OffWork` y globo de notificacion |
@@ -42,7 +43,7 @@ congela la cifra sin mover la hora de fin. Ver ADR-005.
 
 ### M2 — Persistencia
 
-**Fichero**: `Estado.cs` · **Estado**: escrito, sin compilar
+**Fichero**: `Estado.cs` · **Estado**: verificado 2026-09-06
 
 - `%APPDATA%/MiJornada/estado.json`, reescrito **en cada transicion**.
 - Se puede cerrar y reabrir la aplicacion sin perder la cuenta atras, porque no se guarda un
@@ -53,34 +54,73 @@ congela la cifra sin mover la hora de fin. Ver ADR-005.
 
 ### M3 — Presencia (Microsoft Graph)
 
-**Fichero**: `PresenciaService.cs` · **Estado**: escrito, sin compilar
+**Fichero**: `PresenciaService.cs` · **Estado**: verificado 2026-09-06
 
 POST a `users/{objectId}/presence/setUserPreferredPresence`. Detalle en `_hilo/DEPENDENCIAS.md`.
 
 ### M4 — Autenticacion
 
-**Fichero**: `PresenciaService.cs` · **Estado**: escrito, sin compilar
+**Fichero**: `PresenciaService.cs` · **Estado**: verificado 2026-09-06
 
 Codigo de dispositivo con MSAL, token cacheado en disco cifrado con DPAPI. El codigo solo se pide
 la primera vez y cuando caduca el refresh token.
 
 ### M5 — Interfaz
 
-**Fichero**: `MainForm.cs` · **Estado**: escrito, sin compilar
+**Fichero**: `MainForm.cs` · **Estado**: verificado 2026-09-06
 
 - Ventana de 340×430, no redimensionable.
 - **Anillo de progreso** dibujado con GDI+: nace morado (`#5B5FC7`) y completo, y va cediendo
   terreno al gris segun avanza la jornada. Ambar (`#C19C00`) durante las pausas. Anillo y cifra
   central cuentan lo mismo: **lo que queda**.
-- Un solo boton principal que cambia segun el estado, mas un enlace de cancelar.
+- Un solo boton principal que cambia segun el estado, mas un enlace de cancelar y un engranaje
+  discreto arriba a la derecha que abre los Ajustes (M7).
 - Icono en la bandeja del sistema. **Cerrar la ventana con la jornada en marcha la manda a la
   bandeja, no la termina** (ADR-006).
 
 ### M6 — Modo de prueba
 
-**Fichero**: `Program.cs` · **Estado**: escrito, sin compilar
+**Fichero**: `Program.cs` · **Estado**: verificado
 
-`MiJornada.exe --minutos 2` acorta la jornada para no esperar siete horas.
+`MiJornada.exe --minutos 2` acorta la jornada para no esperar siete horas. Manda sobre los
+ajustes guardados y **deshabilita** la duración en el diálogo mientras dure esa ejecución.
+
+### M7 — Ajustes
+
+**Ficheros**: `DialogoAjustes.cs`, `Ajustes` en `Estado.cs` · **Estado**: verificado 2026-09-06
+
+Un engranaje discreto arriba a la derecha abre un diálogo aparte. La pantalla principal se queda
+solo con el anillo y el botón; la configuración crece aquí sin ensuciarla.
+
+| Ajuste | Valores | Por defecto |
+|---|---|---|
+| Duración de la jornada | 0-23 h + 0-59 min | 7 h |
+| Al pausar, aparecer como | Ausente · Vuelvo enseguida · Ocupado · No molestar | Ausente |
+
+- Se persisten en `%APPDATA%/MiJornada/ajustes.json`, **fichero aparte de `estado.json`**:
+  cancelar una jornada no debe olvidar que tu jornada dura 6 horas.
+- **La duración no se puede cambiar con una jornada en marcha**: el anillo se calcula contra
+  `Config.Jornada` y mostraría una fracción distinta a la que se usó al fichar. El diálogo lo
+  deshabilita y lo explica, en vez de dejar hacerlo y descuadrar la pantalla.
+- Una jornada de cero minutos terminaría nada más empezar: el botón Guardar se deshabilita y se
+  dice por qué. **No se corrige el valor mientras el usuario escribe** — bajando las horas se pasa
+  por "0 h 0 min", y ajustarlo justo ahí le secuestraría la entrada.
+- El estado de pausa se guarda por su **clave de Graph** (`BeRightBack`), no por la etiqueta
+  traducida, para que cambiar textos no invalide los ajustes ya guardados.
+
+### M8 — Icono propio
+
+**Ficheros**: `mijornada.ico`, `Iconos` en `Estado.cs`, `01_Diseno/generar-icono.ps1`
+
+El anillo de la aplicación como icono, en 7 resoluciones (16 a 256 px) dentro de un único `.ico`
+con marcos PNG. Se pide el marco concreto en cada uso (16 px bandeja, 32 ventana): con uno solo,
+Windows escala y se ve borroso.
+
+Se dibuja como arco de 270° y no como círculo cerrado porque a 16 px un círculo completo se lee
+como una rosquilla indistinguible; el hueco es lo que hace reconocible que es un progreso. La
+pista gris solo aparece de 32 px para arriba: por debajo es ruido.
+
+Para regenerarlo: `01_Diseno/generar-icono.ps1`. El `.ico` se commitea.
 
 ---
 
@@ -93,19 +133,21 @@ la primera vez y cuando caduca el refresh token.
 
 ---
 
-## Planificadas (ninguna empezada)
+## Planificadas
 
-De `06_Documentacion/CONTEXTO.md` seccion 9. Ordenadas por lo que aportan frente a lo que cuestan:
+De `06_Documentacion/CONTEXTO.md` seccion 9. Ordenadas por lo que aportan frente a lo que cuestan.
+Lo tachado ya esta hecho.
 
 **Cerca del codigo, utiles ya**
 
-- **Icono propio** (`.ico` con el anillo) en ventana y bandeja. Hoy usa `SystemIcons.Application`,
-  lo que deja el boton anclado sin identidad — y el boton anclado es justo el punto de la app.
-- **Icono de bandeja dinamico** con el anillo dibujado en 32×32. Hay una implementacion funcional
-  en la funcion `Nuevo-Icono` del script `mi-jornada.ps1`, portable casi tal cual.
-- **Duracion configurable** desde la interfaz, no solo por parametro. Jornada de verano contra
-  jornada de invierno es el caso real.
-- **Ajustes persistidos**: duracion, arranque minimizado, fichar al iniciar sesion de Windows.
+- ~~**Icono propio**~~ — HECHO 2026-09-06 (M8).
+- ~~**Duracion configurable**~~ y ~~**ajustes persistidos**~~ — HECHO 2026-09-06 (M7).
+- **Icono de bandeja dinamico** con el anillo de progreso dibujado en 32×32, para ver cuanto
+  queda sin abrir la ventana. Hay una implementacion funcional en la funcion `Nuevo-Icono` del
+  script `mi-jornada.ps1`, portable casi tal cual. Ahora es mas facil: `01_Diseno/generar-icono.ps1`
+  ya dibuja el anillo, solo habria que parametrizar el barrido y generar el icono en caliente.
+- **Mas ajustes**, ya que hay diagnostico donde ponerlos: arranque minimizado, fichar al iniciar
+  sesion de Windows, aviso antes del final.
 
 **Funcionalidad**
 
