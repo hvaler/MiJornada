@@ -1,0 +1,300 @@
+# =============================================================================
+# {{PROYECTO_NOMBRE}} - Pipeline CI + CD  (FASE 2, stack .NET Framework clasico, model BRANCH-GATED R24)
+# Ovillo cicd-architect netfx-branch-gated @ {{TEMPLATE_STAMP}}   (sello de plantilla; /cicd-status detecta drift)
+# -----------------------------------------------------------------------------
+# Variante de azure-pipelines.fase2.netfx.yml.template para estrategias con RAMAS POR
+# ENTORNO (gitlab-flow, gitflow): Dev/Demo se alimentan de {{BRANCH_DEVELOP}} y PROD de
+# {{BRANCH_MAIN}}. Origen: GI#1+GI#2 (feedback GestionIntercambio, ADR-044).
+#
+# Modelo BRANCH-GATED (R24) = on-demand (R20) + gate por rama origen:
+#   - Push a cualquiera de las 2 ramas SOLO construye (DeployEnv vacio).
+#   - /cicd-deploy --env <dev|pre|pro> encola con DeployEnv + la RAMA del entorno
+#     (dev/pre -> {{BRANCH_DEVELOP}}, pro -> {{BRANCH_MAIN}}). Un build de
+#     {{BRANCH_DEVELOP}} NUNCA puede desplegar a PROD (condition por Build.SourceBranch).
+#
+# Build R23 HIBRIDO + R24: 3 VSBuild@1 condicionales por rama, cada uno hornea el paquete
+# MSDeploy con SU Configuration (transforms Web.<Config>.config):
+#   - push a {{BRANCH_DEVELOP}} -> paquetes {{CFG_DEV}} + {{CFG_PRE}} (drop-dev + drop-pre)
+#   - push a {{BRANCH_MAIN}}    -> paquete {{CFG_PRO}} (drop-pro)
+# Cada stage de deploy descarga SU drop-<env> via REST (R3). Los proyectos no-web
+# compilan en Release en todas las Configuration (wiring mecanico del .sln, ver R23).
+#
+# === /cicd-init DEBE GARANTIZAR (ademas de las 9 lecciones del template netfx base) ===
+#  1. Las Configuration {{CFG_DEV}}/{{CFG_PRE}}/{{CFG_PRO}} existen en el .sln y el .csproj web
+#     (con sus Web.<Config>.config). Si faltan: crearlas espejando Release (gotchas R23:
+#     'Any CPU' en .sln vs 'AnyCPU' en .csproj, sin '--' en comentarios XML, copiar VERBATIM).
+#  2. definition.queue != NULL (TEC-007) + DeployEnv settable at queue time (FASE 2.5).
+#  3. trigger.branches con AMBAS ramas (R21) + doble patron de paths (R7).
+#  4. /cicd-deploy deriva sourceBranch del entorno (mapeo R24) — NUNCA rama fija.
+#
+# Placeholders: {{PROYECTO_NOMBRE}} {{BRANCH_MAIN}} {{BRANCH_DEVELOP}} {{SRC_DIR}} {{TEST_DIR}}
+#               {{SLN_PATH}} {{WEB_PROJECT}} {{NUGET_CONFIG_PATH}} {{IIS_VIRTUAL_APP}} {{IIS_APP_POOL}}
+#               {{APPROVER_EMAIL}} {{DEV_URL}} {{DEMO_URL}} {{PROD_URL}} {{TESTPLATFORM_NUPKG}}
+#               {{CFG_DEV}} {{CFG_PRE}} {{CFG_PRO}}   (Configurations por entorno, R23; tipico: Dev / Preproduccion / Release)
+# Steps reutilizables (skills/cicd-architect/templates/steps/): download-artifact-rest (param
+#   artifactName), security-scan-build, security-verdict-gate, backup-pre-deploy,
+#   rollback-on-fail, smoke-besteffort.
+# Script de registro TFS: registrar-pipeline-tfs.ps1.template (TEC-007 + TEC-003 + R17 + R20).
+# =============================================================================
+
+name: $(date:yyyyMMdd)$(rev:.r)
+
+trigger:
+  branches:
+    include:
+      - {{BRANCH_MAIN}}             # R24/R21: la estrategia construye AMBAS ramas
+      - {{BRANCH_DEVELOP}}
+  paths:
+    include:
+      - '{{SRC_DIR}}/**'
+      - '{{SRC_DIR}}/**/*'        # R7: doble patron
+      - '{{TEST_DIR}}/**'
+      - '{{TEST_DIR}}/**/*'
+      - 'azure-pipelines.yml'
+
+pr: none
+
+variables:
+  # R20 (TEC-009): DeployEnv NO se declara aqui — es variable de la DEFINICION (settable at
+  # queue time, default '', la pone FASE 2.5). Declararla en el YAML la ECLIPSA.
+  # R24: las ramas se evaluan con Build.SourceBranch en las condition de build/deploy.
+  - name: buildPlatform
+    value: 'Any CPU'
+  - name: solution
+    value: '{{SLN_PATH}}'
+  - name: solutionPath            # alias que esperan los steps R22
+    value: '{{SLN_PATH}}'
+  - name: apiProject              # proyecto web (para el scan R22)
+    value: '{{WEB_PROJECT}}'
+  - name: iisVirtualApp
+    value: '{{IIS_VIRTUAL_APP}}'
+  - name: iisAppPool
+    value: '{{IIS_APP_POOL}}'
+  - name: iisPhysicalPath         # R15: ruta fisica REAL de la vApp en disco. Vacio = C:\inetpub\wwwroot\<vApp>.
+    value: '{{IIS_PHYSICAL_PATH}}'
+  - name: backupRoot              # R15: raiz de backups pre-deploy.
+    value: 'C:\Backups'
+  # R24: refs completas de las 2 ramas (legibilidad de las condition)
+  - name: refMain
+    value: 'refs/heads/{{BRANCH_MAIN}}'
+  - name: refDevelop
+    value: 'refs/heads/{{BRANCH_DEVELOP}}'
+
+stages:
+  # ── STAGE 1: BUILD (auto en push a AMBAS ramas; hornea solo los paquetes de SU rama) ──
+  - stage: Build
+    displayName: 'Build & Test (branch-gated R24)'
+    jobs:
+      - job: BuildAndTest
+        pool:
+          name: BUILDERS                                     # R1
+          demands:
+            - Agent.ComputerName -equals LADYADA             # R1
+        timeoutInMinutes: 45
+        steps:
+          - checkout: self
+            clean: true
+          - task: NuGetToolInstaller@1
+            displayName: 'Instalar nuget.exe'
+            inputs:
+              versionSpec: '6.x'
+          - task: NuGetCommand@2
+            displayName: 'NuGet restore (solucion)'
+            inputs:
+              command: 'restore'
+              restoreSolution: '$(solution)'
+              feedsToUse: 'config'
+              nugetConfigPath: '{{NUGET_CONFIG_PATH}}'
+
+          # R24 + R23: un VSBuild POR Configuration, condicional por rama origen.
+          # develop hornea dev+pre; main hornea pro. Los transforms Web.<Config>.config
+          # quedan resueltos en cada paquete (config por entorno horneada, R23 hibrido).
+          - task: VSBuild@1
+            displayName: 'VSBuild {{CFG_DEV}} + paquete MSDeploy (drop-dev)'
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['refDevelop']))   # R24
+            inputs:
+              solution: '$(solution)'
+              vsVersion: 'latest'
+              configuration: '{{CFG_DEV}}'
+              platform: '$(buildPlatform)'
+              msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(Build.ArtifactStagingDirectory)\dev"'
+          - task: VSBuild@1
+            displayName: 'VSBuild {{CFG_PRE}} + paquete MSDeploy (drop-pre)'
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['refDevelop']))   # R24
+            inputs:
+              solution: '$(solution)'
+              vsVersion: 'latest'
+              configuration: '{{CFG_PRE}}'
+              platform: '$(buildPlatform)'
+              msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(Build.ArtifactStagingDirectory)\pre"'
+          - task: VSBuild@1
+            displayName: 'VSBuild {{CFG_PRO}} + paquete MSDeploy (drop-pro)'
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['refMain']))      # R24
+            inputs:
+              solution: '$(solution)'
+              vsVersion: 'latest'
+              configuration: '{{CFG_PRO}}'
+              platform: '$(buildPlatform)'
+              msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(Build.ArtifactStagingDirectory)\pro"'
+
+          # TEC-008: vstest 18.x desde el feed Internal si el adapter MSTest es >=4.x.
+          - task: VisualStudioTestPlatformInstaller@1
+            displayName: 'vstest.console 18.x (feed Internal)'
+            inputs:
+              packageFeedSelector: 'netShare'
+              netShare: '{{TESTPLATFORM_NUPKG}}'
+          # Los proyectos de tests compilan en Release en TODAS las Configuration (wiring R23:
+          # solo el web cambia de Configuration), asi que VSTest usa Release siempre.
+          - task: VSTest@2
+            displayName: 'VSTest'
+            inputs:
+              vsTestVersion: 'toolsInstaller'      # TEC-008
+              testSelector: 'testAssemblies'
+              testAssemblyVer2: |
+                **\*Tests.dll
+                !**\*TestAdapter.dll
+                !**\obj\**
+              searchFolder: '$(System.DefaultWorkingDirectory)'
+              configuration: 'Release'
+              codeCoverageEnabled: false                     # prerequisito 7 del template netfx base
+          - template: steps/security-scan-build.yml          # R22 verdict-file (no tumba el Build)
+            parameters:
+              stack: dotnet
+
+          # R24: publicar SOLO los drops horneados por esta rama (condition espejo de los VSBuild)
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish artifact drop-dev'
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['refDevelop']))
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)\dev'
+              ArtifactName: 'drop-dev'
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish artifact drop-pre'
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['refDevelop']))
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)\pre'
+              ArtifactName: 'drop-pre'
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish artifact drop-pro'
+            condition: and(succeeded(), eq(variables['Build.SourceBranch'], variables['refMain']))
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)\pro'
+              ArtifactName: 'drop-pro'
+
+  # ── STAGE 2: DEPLOY DEV (DeployEnv=dev + rama develop) ──────────────────
+  - stage: DeployDev
+    displayName: 'Deploy a DEV (branch-gated)'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['DeployEnv'], 'dev'), eq(variables['Build.SourceBranch'], variables['refDevelop']))    # R20 + R24
+    jobs:
+      - job: DeployToDev
+        pool:
+          name: BUILDERS
+          demands:
+            - DeployTarget -equals {{DEPLOY_DEMAND_DEV}}    # R1/R25 (<env>-<app|svc>)
+        timeoutInMinutes: 15
+        steps:
+          - checkout: none                                   # R8
+          - template: steps/security-verdict-gate.yml        # R22 (DEV = WARN)
+            parameters:
+              mode: warn
+          - template: steps/download-artifact-rest.yml       # R3 -> $(MsDeployPackage)
+            parameters:
+              artifactName: drop-dev                         # R24: drop de SU entorno
+          - task: IISWebAppDeploymentOnMachineGroup@0        # R4
+            displayName: 'Deploy IIS (DEV)'
+            inputs:
+              WebSiteName: 'Default Web Site'
+              VirtualApplication: '$(iisVirtualApp)'
+              Package: '$(MsDeployPackage)\*.zip'
+              RemoveAdditionalFilesFlag: true
+              TakeAppOfflineFlag: true                       # R10 (System.Web in-process)
+          - template: steps/smoke-besteffort.yml             # R11
+            parameters:
+              appUrl: '{{DEV_URL}}'
+
+  # ── STAGE 3: DEPLOY DEMO/Pre (DeployEnv=pre + rama develop) ──────────────
+  - stage: DeployDemo
+    displayName: 'Deploy a DEMO/Pre (branch-gated)'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['DeployEnv'], 'pre'), eq(variables['Build.SourceBranch'], variables['refDevelop']))    # R20 + R24
+    jobs:
+      # FB-F (v3.15.0-h3): DEMO/Pre SIN ManualValidation en on-demand/branch-gated. El gate ya es la
+      # condicion DeployEnv=='pre' + el comando /cicd-deploy --env pre (la aprobacion explicita). PROD si gatea.
+      # (Modelo 'auto' -DEMO se despliega en push sin DeployEnv-: re-anadir aqui un job WaitForApproval con
+      #  ManualValidation@0 + 'dependsOn: WaitForApproval' en DeployToDemo. Ver P2-bis en /cicd-init.)
+      - job: DeployToDemo
+        condition: succeeded()
+        pool:
+          name: BUILDERS
+          demands:
+            - DeployTarget -equals {{DEPLOY_DEMAND_PRE}}    # R1/R25
+        timeoutInMinutes: 30
+        steps:
+          - checkout: none
+          - template: steps/security-verdict-gate.yml        # R22 (DEMO = BLOCK)
+            parameters:
+              mode: block
+          - template: steps/download-artifact-rest.yml
+            parameters:
+              artifactName: drop-pre                         # R24
+          - template: steps/backup-pre-deploy.yml            # R15 capa 1
+          - task: IISWebAppDeploymentOnMachineGroup@0
+            displayName: 'Deploy IIS (DEMO)'
+            inputs:
+              WebSiteName: 'Default Web Site'
+              VirtualApplication: '$(iisVirtualApp)'
+              Package: '$(MsDeployPackage)\*.zip'
+              RemoveAdditionalFilesFlag: true
+              TakeAppOfflineFlag: true
+              AdditionalArguments: '-enableRule:DoNotDeleteRule'   # R15 capa 2
+          - template: steps/smoke-besteffort.yml             # R11
+            parameters:
+              appUrl: '{{DEMO_URL}}'
+          - template: steps/rollback-on-fail.yml             # R15 capa 3 (condition: failed())
+
+  # ── STAGE 4: DEPLOY PROD (DeployEnv=pro + rama main) ────────────────────
+  - stage: DeployProd
+    displayName: 'Deploy a PROD (branch-gated)'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['DeployEnv'], 'pro'), eq(variables['Build.SourceBranch'], variables['refMain']))       # R20 + R24: SOLO builds de {{BRANCH_MAIN}}
+    jobs:
+      - job: WaitForApprovalProd
+        pool: server
+        timeoutInMinutes: 1440
+        steps:
+          - task: ManualValidation@0
+            inputs:
+              notifyUsers: '{{APPROVER_EMAIL}}'
+              instructions: 'Aprobar deploy a PROD del build $(Build.BuildNumber) (rama {{BRANCH_MAIN}}).'
+              onTimeout: 'reject'
+      - job: DeployToProd
+        dependsOn: WaitForApprovalProd
+        condition: succeeded()
+        pool:
+          name: BUILDERS
+          demands:
+            - DeployTarget -equals {{DEPLOY_DEMAND_PRO}}    # R1/R25 (app=APPNODE01/02, svc=STORM01[/02 off])
+        timeoutInMinutes: 30
+        steps:
+          - checkout: none
+          - template: steps/security-verdict-gate.yml        # R22 (PROD = BLOCK)
+            parameters:
+              mode: block
+          - template: steps/download-artifact-rest.yml
+            parameters:
+              artifactName: drop-pro                         # R24
+          - template: steps/backup-pre-deploy.yml
+          - task: IISWebAppDeploymentOnMachineGroup@0
+            displayName: 'Deploy IIS (PROD)'
+            inputs:
+              WebSiteName: 'Default Web Site'
+              VirtualApplication: '$(iisVirtualApp)'
+              Package: '$(MsDeployPackage)\*.zip'
+              RemoveAdditionalFilesFlag: true
+              TakeAppOfflineFlag: true
+              AdditionalArguments: '-enableRule:DoNotDeleteRule'
+          - template: steps/smoke-besteffort.yml             # R11
+            parameters:
+              appUrl: '{{PROD_URL}}'
+          - template: steps/rollback-on-fail.yml

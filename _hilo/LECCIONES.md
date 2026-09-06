@@ -1,0 +1,226 @@
+# Lecciones Aprendidas del Proyecto
+
+> **INSTRUCCIONES PARA CLAUDE**: Este archivo documenta patrones, errores y particularidades
+> descubiertos durante el desarrollo. Consulta este archivo al inicio de cada sesion para
+> evitar repetir errores y aprovechar lo que ya funciona. Actualiza con `/sesion` al final
+> de cada sesion si hay nuevas lecciones.
+>
+> **Categoria (dashboard Ovillo)**: el PREFIJO del codigo categoriza la leccion en el hub:
+> `PAT-` patron, `ERR-` error, `TEC-` tecnica, `PREF-` preferencia (lo infiere `/mcp-sync`).
+
+---
+
+## Resumen Rapido (Top 5)
+
+| # | Leccion | Categoria |
+|---|---------|-----------|
+| 1 | La ruta `/me/presence/setUserPreferredPresence` devuelve **404 con cuerpo vacio**: hay que usar la ruta con el object ID explicito | Error |
+| 2 | `setUserPreferredPresence` **no falla y no hace nada** si Teams no esta abierto en algun dispositivo | Tecnica |
+| 3 | El flujo interactivo de MSAL falla en este tenant por acceso condicional: usar codigo de dispositivo | Error |
+| 4 | El tiempo restante se calcula **restando contra el reloj real**, nunca decrementando un contador | Patron |
+| 5 | En WinForms, un `Label` con `BackColor = Transparent` pinta el fondo de su **padre**, no lo que hay debajo | Tecnica |
+
+---
+
+## 1. Patrones del Proyecto
+
+### PAT-001: El tiempo se calcula restando, nunca decrementando
+
+**Contexto**: cualquier cambio en la cuenta atras, la pausa o el anillo.
+
+**Patron**: se persiste la **hora de fin**, y el restante es siempre `Fin - referencia`. La
+referencia es `DateTime.Now`, salvo durante la pausa, donde es `PausaDesde` (lo que congela la
+cifra sin mover la hora de fin). Al reanudar, la hora de fin se desplaza por los minutos parados.
+
+**Por que**: un contador que se decrementa se desincroniza si el equipo se suspende o el proceso
+se congela. La resta contra el reloj real siempre da el valor correcto al volver.
+
+**Ejemplo**: `03_Desarrollo/Estado.cs`, propiedad `Restante`. Ver ADR-005.
+
+**Fecha**: 2026-09-06
+
+---
+
+### PAT-002: El estado se persiste en cada transicion
+
+**Contexto**: al anadir cualquier accion que cambie la situacion de la jornada.
+
+**Patron**: toda transicion escribe `%APPDATA%/MiJornada/estado.json` inmediatamente. Si al
+arrancar la hora de fin ya paso, se descarta en silencio.
+
+**Por que**: la aplicacion se puede cerrar y reabrir sin perder la jornada. Y no tiene sentido
+notificar el final de una jornada que termino ayer.
+
+**Ejemplo**: `03_Desarrollo/Estado.cs`, metodos `Guardar()` y `Limpiar()`.
+
+**Fecha**: 2026-09-06
+
+---
+
+### PAT-003: El anillo cuenta lo que queda, no lo consumido
+
+**Contexto**: al tocar el dibujado del anillo o la cifra central.
+
+**Patron**: el anillo nace completo en morado (`#5B5FC7`) y va cediendo terreno al gris segun
+avanza la jornada; ambar (`#C19C00`) durante las pausas. Anillo y cifra central cuentan **lo
+mismo**: lo que queda.
+
+**Por que**: coherencia visual. Si el anillo creciera y la cifra bajase, contarian cosas distintas.
+
+**Ejemplo**: `03_Desarrollo/MainForm.cs`, `DibujarAnillo`; `Estado.Fraccion`.
+
+**Fecha**: 2026-09-06
+
+---
+
+## 2. Errores y sus causas
+
+### ERR-001: La ruta con `/me/` devuelve 404 con cuerpo vacio
+
+**Sintoma**: `POST /v1.0/me/presence/setUserPreferredPresence` responde **404 sin mensaje**, lo que
+hace pensar en un problema de permisos o de token.
+
+**Causa**: esa ruta, aunque aparece documentada, no funciona para esta operacion.
+
+**Solucion**: usar la ruta con el object ID explicito:
+`POST /v1.0/users/{objectId}/presence/setUserPreferredPresence`. Sigue siendo una llamada
+delegada, asi que el permiso necesario es el mismo (`Presence.ReadWrite`, sin `.All`).
+
+El object ID sale de `cuenta.HomeAccountId.ObjectId` de la cuenta autenticada, **no esta escrito
+en el codigo**: asi la aplicacion funciona para cualquiera que la ejecute.
+
+**Fecha**: 2026-09-06
+
+---
+
+### ERR-002: `AADSTS7000218` al pedir el token
+
+**Sintoma**: el flujo de codigo de dispositivo falla nada mas empezar.
+
+**Causa**: el registro de Entra ID no tiene activado "Permitir flujos de cliente publico".
+
+**Solucion**: Autenticacion → Configuracion avanzada → **Permitir flujos de cliente publico: Si**.
+Y anadir la plataforma "Aplicaciones moviles y de escritorio" con la URI
+`https://login.microsoftonline.com/common/oauth2/nativeclient`.
+
+**Fecha**: 2026-09-06
+
+---
+
+### ERR-003: `Error response came from MDM terms of use page`
+
+**Sintoma**: el flujo interactivo de MSAL falla al abrir el navegador.
+
+**Causa**: politicas de acceso condicional del tenant en equipos no gestionados.
+
+**Solucion**: usar el flujo de **codigo de dispositivo**. No hay forma de arreglar el interactivo
+desde la aplicacion. Ver ADR-002.
+
+**Fecha**: 2026-09-06
+
+---
+
+### ERR-004: `AADSTS65002` con el conector "HTTP con Microsoft Entra ID"
+
+**Sintoma**: al crear la conexion contra Graph desde Power Platform.
+
+**Causa**: `Consent between first party application ... and first party resource ... must be
+configured via preauthorization`. Las dos son aplicaciones de Microsoft y la preautorizacion solo
+la puede configurar Microsoft.
+
+**Solucion**: ninguna desde el tenant. Ese conector sirve para APIs propias, no para Graph. Es
+uno de los motivos por los que la via Power Platform necesitaba el conector personalizado
+(premium). Ver ADR-001.
+
+**Fecha**: 2026-09-06 · **Aplica a**: la implementacion anterior, ya descartada. Anotado para no
+volver a intentarlo.
+
+---
+
+## 3. Tecnicas y particularidades
+
+### TEC-001: `setUserPreferredPresence` no hace nada sin Teams abierto
+
+La llamada **solo surte efecto si existe al menos una sesion de presencia activa**, es decir, con
+Teams abierto en algun dispositivo. Sin ella responde correctamente y no cambia nada visible.
+
+**Es un fallo silencioso**: la aplicacion cree que lo cambio. La forma de detectarlo seria leer la
+presencia real con `GET /users/{id}/presence`, que hoy no se hace (esta en el backlog).
+
+Para devolver el control al calculo automatico: `POST .../presence/clearUserPreferredPresence`.
+
+**Fecha**: 2026-09-06
+
+---
+
+### TEC-002: Combinaciones validas de availability/activity
+
+`Available`/`Available` · `Busy`/`Busy` · `DoNotDisturb`/`DoNotDisturb` ·
+`BeRightBack`/`BeRightBack` · `Away`/`Away` · `Offline`/`OffWork` (lo que Teams muestra como
+"Fuera del trabajo").
+
+No son libres: hay que usar las parejas.
+
+**Fecha**: 2026-09-06
+
+---
+
+### TEC-003: WinForms no tiene transparencia real
+
+Un `Label` con `BackColor = Transparent` pinta el fondo de su **padre**, no lo que haya debajo en
+la ventana. Por eso la cuenta atras se asigna como hija del panel del anillo
+(`_lblTiempo.Parent = _anillo`) en vez de anadirse al formulario.
+
+Si aparece un rectangulo gris sobre el anillo, la salida es dibujar el texto en el `Paint` del
+panel con `DrawString`. Ver DT-004.
+
+**Fecha**: 2026-09-06
+
+---
+
+### TEC-004: El estado preferido persiste entre sesiones de Teams
+
+No caduca al cerrar Teams. Si un dia se cierra la aplicacion sin finalizar la jornada, al dia
+siguiente se puede aparecer como Disponible antes de fichar.
+
+**Fecha**: 2026-09-06
+
+---
+
+## 4. Preferencias del proyecto
+
+### PREF-001: Sin arquitectura de mas
+
+Son unas 500 lineas. Nada de capas, interfaces ni inyeccion de dependencias, y el namespace es
+plano (`MiJornada`). Es una **excepcion deliberada** a `CLAUDE_BASE.md`, no un descuido. Ver
+ADR-007.
+
+Antes de proponer abstracciones aqui, comprobar que resuelven un problema real.
+
+**Fecha**: 2026-09-06
+
+---
+
+### PREF-002: Sin librerias de mas
+
+Una sola llamada a Graph construida a mano con `HttpClient`, sin el SDK `Microsoft.Graph`. Sin
+Serilog, sin Polly, sin AutoMapper. Si hace falta reintento (DT-008), un bucle antes que un
+paquete.
+
+**Fecha**: 2026-09-06
+
+---
+
+## 5. Contexto historico
+
+El proyecto es la **tercera implementacion** de la misma idea. Antes de proponer un cambio de
+enfoque, leer `06_Documentacion/mi-jornada-traspaso.md`: documenta bastantes callejones sin
+salida ya recorridos, incluida una solucion de Power Platform que llego a funcionar entera y se
+descarto por coste de licencia, no por problemas tecnicos.
+
+De aquella etapa sobreviven tres cosas: el diseno visual del anillo, la maquina de estados con
+pausa, y el conocimiento sobre la API de presencia que recoge este fichero.
+
+---
+
+*Completado por `/onboarding` el 2026-09-06*

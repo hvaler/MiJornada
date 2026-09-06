@@ -1,0 +1,107 @@
+# =============================================================================
+# {{PROYECTO_NOMBRE}} - Pipeline CI  (FASE 1: build validation)  [stack .NET Framework clasico]
+# Ovillo cicd-architect netfx-fase1 @ {{TEMPLATE_STAMP}}   (sello de plantilla; /cicd-status detecta drift)
+# -----------------------------------------------------------------------------
+# Receta VALIDADA end-to-end en piloto MyCompany.WebCorporativa (2026-06-04, build #20260604.10 verde).
+# Stack: .NET Framework 4.8 (MSBuild + packages.config) + test SDK-style netXX por ProjectReference.
+#   Restore: NuGetCommand@2   |   Build: VSBuild@1 (MSBuild)   |   Test: VSTest@2
+#   NO usar UseDotNet@2 / DotNetCoreCLI@2 (R4 asume 'dotnet'; aqui es MSBuild clasico).
+#
+# ESTRUCTURA PLANA (pool + steps a nivel raiz, SIN 'stages:'/'jobs:'): en TFS 2020 un pool a nivel
+#   de job dentro de 'stages:' NO lo resuelve la ejecucion manual ("No pool was specified"). Para una
+#   FASE 1 de un solo job, el formato plano con pool RAIZ funciona manual Y por push. (FASE 2 multi-stage
+#   usara pool por stage/job.)
+#
+# Placeholders /cicd-init: {{PROYECTO_NOMBRE}} {{SLN_PATH}} {{BRANCH}} {{SRC_DIR}} {{TEST_DIR}} {{NUGET_CONFIG_PATH}} {{TESTPLATFORM_NUPKG}}
+#
+# === PRERREQUISITOS QUE /cicd-init DEBE GARANTIZAR (lecciones del piloto) ===
+#  1. definition.queue != NULL (TEC-007): tras crear la definicion, asignar la cola BUILDERS por API.
+#     Si NULL -> TODO build falla instant con "No pool was specified" (da igual el pool del YAML).
+#     Tipico al crear el pipeline por el wizard de la UI (la UI deja queue=NULL; el POST de /cicd-init la pone).
+#  2. NuGet.config en el repo con el feed interno de la organización ('Internal'): el agente NO hereda el config de
+#     user. Generar {{NUGET_CONFIG_PATH}} con <clear/> + Internal (\\build01.example.org\repositorio\Paquetes) + nuget.org.
+#  3. El .sln debe tener el header 'Microsoft Visual Studio Solution File...' en la LINEA 1 (tras BOM).
+#     Un comentario '# ...' delante rompe el parser MSBuild14 de nuget.exe ("No file format header found").
+#  4. Rol de la cola del proyecto: 'Project Valid Users' = User (no Reader) para que el dueno autorice
+#     la canalizacion (PATCH pipelinePermissions). Proyecto nuevo nace con Reader -> AccessDenied.
+#  5. Agente LADYADA con VS Build Tools (msbuild + VSTest). En el piloto ya estaba VS 2022 BuildTools.
+#  6. Todos los proyectos del .sln (incl. el de tests) COMMITEADOS (si falta -> MSB3202 en CI).
+# =============================================================================
+
+trigger:
+  branches:
+    include:
+      - {{BRANCH}}
+  paths:
+    include:
+      - '{{SRC_DIR}}/**'
+      - '{{SRC_DIR}}/**/*'        # R7: doble patron
+      - '{{TEST_DIR}}/**'
+      - '{{TEST_DIR}}/**/*'
+      - 'azure-pipelines.yml'
+
+pr: none
+
+variables:
+  - name: solution
+    value: '{{SLN_PATH}}'
+  - name: buildConfiguration
+    value: 'Release'
+  - name: buildPlatform
+    value: 'Any CPU'
+
+pool:
+  name: BUILDERS                  # R1: pool a nivel RAIZ (pipeline plano)
+  demands:
+    - Agent.ComputerName -equals LADYADA
+
+steps:
+  - checkout: self
+    clean: true
+
+  - task: NuGetToolInstaller@1
+    displayName: 'Instalar nuget.exe'
+    inputs:
+      versionSpec: '6.x'
+
+  # CRITICO: feedsToUse:config + nugetConfigPath. Sin esto, NuGetCommand@2 crea un config temporal
+  # con SOLO nuget.org e ignora el NuGet.config del repo -> los paquetes internos MyCompany.* dan NotFound.
+  - task: NuGetCommand@2
+    displayName: 'NuGet restore (solucion)'
+    inputs:
+      command: 'restore'
+      restoreSolution: '$(solution)'
+      feedsToUse: 'config'
+      nugetConfigPath: '{{NUGET_CONFIG_PATH}}'    # ej. {{SRC_DIR}}/NuGet.config con el feed Internal
+
+  - task: VSBuild@1
+    displayName: 'VSBuild solucion (MSBuild)'
+    inputs:
+      solution: '$(solution)'
+      vsVersion: 'latest'
+      configuration: '$(buildConfiguration)'
+      platform: '$(buildPlatform)'
+
+  # TEC-008: el agente trae vstest 16.11 (enum vsTestVersion sin 17.0); para adapter MSTest >=4.x
+  # se instala vstest 18.x desde el feed Internal (netShare). Prerequisito: Microsoft.TestPlatform en el feed (PERMISOS_CICD).
+  - task: VisualStudioTestPlatformInstaller@1
+    displayName: 'vstest.console 18.x (feed Internal)'
+    inputs:
+      packageFeedSelector: 'netShare'
+      netShare: '{{TESTPLATFORM_NUPKG}}'   # ej. \\build01.example.org\repositorio\MyOrg\PaquetesNuget\Microsoft.TestPlatform.18.6.0.nupkg
+  - task: VSTest@2
+    displayName: 'VSTest'
+    inputs:
+      vsTestVersion: 'toolsInstaller'      # usa el 18.x del installer, NO el 16.11 del agente (TEC-008)
+      testSelector: 'testAssemblies'
+      testAssemblyVer2: |
+        **\*Tests.dll
+        !**\*TestAdapter.dll
+        !**\obj\**
+      searchFolder: '$(System.DefaultWorkingDirectory)'
+      configuration: '$(buildConfiguration)'
+      codeCoverageEnabled: false
+      # codeCoverageEnabled:false A PROPOSITO: si el agente no tiene el profiler IntelliTrace
+      # (x64\Microsoft.IntelliTrace.Profiler.dll), el colector de cobertura VS crashea y vstest.console
+      # devuelve exit 1 AUNQUE TODOS LOS TESTS PASEN ("Test Run Failed" con Passed:N/N). Validado en piloto.
+      # Cobertura para Mira (R18) en netfx no usa el '.coverage' de VS; via coverlet + dotnet test en FASE 2.

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  Runsettings de cobertura para calidad-codigo-sync (Ovillo).
+  Emite AMBOS formatos en una pasada (Format=cobertura,opencover):
+    cobertura : alimenta el gate de cobertura de Mira (R18) Y aporta CRAP a ReportGenerator.
+    opencover : aporta complejidad ciclomatica + NPath por metodo (lo que usa Sync-QualityRecord.ps1).
+  Verificado en el spike F0 (EWP, 2026-06-10). Excludes adoptados del skill crap-analysis (Aaronontheweb).
+  Uso: pasar este fichero con la opcion settings de "dotnet test" (collect XPlat Code Coverage).
+  NOTA XML (R23): los comentarios XML NO pueden contener guion-guion; por eso aqui no se escriben
+  los flags con doble guion. Ver ci-wiring.md para el comando completo.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura,opencover</Format>
+          <Exclude>[*.Tests]*,[*.Test]*,[*.Benchmark]*,[*.Benchmarks]*,[*]*.Migrations.*</Exclude>
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/obj/**/*,**/*.g.cs,**/*.designer.cs,**/*.razor.g.cs,**/*.razor.css.g.cs,**/Migrations/**/*</ExcludeByFile>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+          <SingleHit>false</SingleHit>
+          <UseSourceLink>true</UseSourceLink>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

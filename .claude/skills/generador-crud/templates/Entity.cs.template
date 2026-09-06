@@ -1,0 +1,184 @@
+// ============================================================================
+// TEMPLATE: Entity.cs - Entidad de Dominio
+// Skill: generador-crud
+// Versión: 2.8.0
+// ============================================================================
+// USO: Reemplazar {{Entity}}, {{Namespace}}, {{Propiedades}}
+// ============================================================================
+
+using System;
+using System.Collections.Generic;
+
+namespace {{Namespace}}.Domain.Entities;
+
+/// <summary>
+/// Entidad de dominio: {{Entity}}
+/// </summary>
+public class {{Entity}} : AuditableEntity, ISoftDelete
+{
+    // ═══════════════════════════════════════════════════════════════════════
+    // PROPIEDADES - Solo getters públicos, setters privados
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public int Id { get; private set; }
+
+    {{Propiedades}}
+
+    // Soft delete
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public string? DeletedBy { get; private set; }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // NAVEGACIÓN (si aplica)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // private readonly List<RelatedEntity> _relacionados = [];
+    // public IReadOnlyCollection<RelatedEntity> Relacionados => _relacionados.AsReadOnly();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSTRUCTOR - Privado para forzar uso de factory
+    // ═══════════════════════════════════════════════════════════════════════
+
+    private {{Entity}}() { } // Para EF Core
+
+    private {{Entity}}({{ParametrosConstructor}})
+    {
+        {{AsignacionesConstructor}}
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // FACTORY - Punto único de creación con validación
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public static {{Entity}} Create({{ParametrosFactory}})
+    {
+        // Validaciones de dominio
+        {{Validaciones}}
+
+        var entidad = new {{Entity}}({{ArgumentosConstructor}});
+
+        // Evento de dominio (opcional)
+        // entidad.AddDomainEvent(new {{Entity}}CreadoEvent(entidad.Id));
+
+        return entidad;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // COMPORTAMIENTOS - Métodos con lógica de negocio
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public void Actualizar({{ParametrosActualizar}})
+    {
+        // Validaciones
+        {{ValidacionesActualizar}}
+
+        // Actualizar propiedades
+        {{AsignacionesActualizar}}
+
+        // Evento de dominio (opcional)
+        // AddDomainEvent(new {{Entity}}ActualizadoEvent(Id));
+    }
+
+    public void Delete(string user)
+    {
+        if (IsDeleted)
+            throw new DomainException("La entidad ya está eliminada");
+
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        DeletedBy = user;
+
+        // AddDomainEvent(new {{Entity}}EliminadoEvent(Id));
+    }
+
+    public void Restaurar()
+    {
+        if (!IsDeleted)
+            throw new DomainException("La entidad no está eliminada");
+
+        IsDeleted = false;
+        DeletedAt = null;
+        DeletedBy = null;
+    }
+}
+
+// ============================================================================
+// EJEMPLO DE USO - Entidad "Scholarship"
+// ============================================================================
+/*
+public class Scholarship : AuditableEntity, ISoftDelete
+{
+    public int Id { get; private set; }
+    public string Code { get; private set; } = null!;
+    public string Name { get; private set; } = null!;
+    public string? Description { get; private set; }
+    public decimal Amount { get; private set; }
+    public ScholarshipStatus Status { get; private set; }
+    public DateTime StartDate { get; private set; }
+    public DateTime EndDate { get; private set; }
+
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public string? DeletedBy { get; private set; }
+
+    private readonly List<ScholarshipApplication> _applications = [];
+    public IReadOnlyCollection<ScholarshipApplication> Applications => _applications.AsReadOnly();
+
+    private Scholarship() { }
+
+    private Scholarship(string code, string name, decimal amount, DateTime startDate, DateTime endDate)
+    {
+        Code = code;
+        Name = name;
+        Amount = amount;
+        StartDate = startDate;
+        EndDate = endDate;
+        Status = ScholarshipStatus.Draft;
+    }
+
+    public static Scholarship Create(string code, string name, decimal amount, DateTime startDate, DateTime endDate)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            throw new DomainException("Code is required");
+
+        if (string.IsNullOrWhiteSpace(name))
+            throw new DomainException("Name is required");
+
+        if (name.Length > 200)
+            throw new DomainException("Name cannot exceed 200 characters");
+
+        if (amount <= 0)
+            throw new DomainException("Amount must be positive");
+
+        if (endDate <= startDate)
+            throw new DomainException("End date must be after start date");
+
+        return new Scholarship(code.ToUpperInvariant(), name.Trim(), amount, startDate, endDate);
+    }
+
+    public void Publish()
+    {
+        if (Status != ScholarshipStatus.Draft)
+            throw new DomainException("Only draft scholarships can be published");
+
+        Status = ScholarshipStatus.Published;
+    }
+
+    public void Close()
+    {
+        if (Status != ScholarshipStatus.Published)
+            throw new DomainException("Only published scholarships can be closed");
+
+        Status = ScholarshipStatus.Closed;
+    }
+}
+
+public enum ScholarshipStatus
+{
+    Draft = 0,
+    Published = 1,
+    Closed = 2,
+    Cancelled = 3
+}
+*/

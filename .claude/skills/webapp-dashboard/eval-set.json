@@ -1,0 +1,21 @@
+{
+  "skill": "webapp-dashboard",
+  "version": "1.0.0",
+  "queries": [
+    { "query": "crea un panel administrativo / dashboard interno para esta app", "should_trigger": true, "language": "es" },
+    { "query": "necesito un cuadro de mando con sidebar colapsable, KPIs y graficos", "should_trigger": true, "language": "es" },
+    { "query": "scaffold de admin dashboard con modo oscuro y Chart.js", "should_trigger": true, "language": "es" },
+    { "query": "panel de control full-width con la marca de la organización y tema claro/oscuro", "should_trigger": true, "language": "es" },
+    { "query": "build an internal admin panel with collapsible sidebar and dark mode", "should_trigger": true, "language": "en" },
+    { "query": "dashboard con topbar, buscador Ctrl+K y graficos que cambian con el tema", "should_trigger": true, "language": "es" },
+
+    { "query": "monta el layout general del sitio: cabecera, pie y menu del sitio publico", "should_trigger": false, "language": "es", "note": "eso es webapp-layout, no un panel admin" },
+    { "query": "rehaz el dashboard de calidad del portal del constructor", "should_trigger": false, "language": "es", "note": "ese es Publicacion/docs/dashboard/calidad.html, no esta plantilla" },
+    { "query": "genera un grafico de barras suelto para una vista", "should_trigger": false, "language": "es", "note": "componente suelto, no el scaffold del panel" },
+    { "query": "configura Bootstrap en el proyecto", "should_trigger": false, "language": "es", "note": "setup generico de Bootstrap, no el panel admin" }
+  ],
+  "overlap_notes": {
+    "webapp-layout": "webapp-layout = chrome de un SITIO web (header/footer/sidebar de navegacion publica). webapp-dashboard = PANEL administrativo interno (KPIs + graficos + tablas, full-width).",
+    "calidad.html (constructor)": "El dashboard de calidad del CONSTRUCTOR es una pagina del portal (Publicacion/docs), no esta plantilla. Esta plantilla es para las APPS consumidoras; calidad.html podra re-skinearse sobre ella mas adelante."
+  }
+}

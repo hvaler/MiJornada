@@ -1,0 +1,35 @@
+# =============================================================================
+# steps/download-artifact-rest.yml
+# R3: descarga del artefacto via REST API + PowerShell. Evita el bug SSL de las
+#     tasks Node (DownloadBuildArtifacts@0 / DownloadPipelineArtifact@2) contra
+#     devops.example.org ("unable to get local issuer certificate").
+# R2: TLS 1.2+ forzado. Expone la variable $(MsDeployPackage) con la ruta del paquete.
+# Materializado por /cicd-init desde skills/cicd-architect/templates/steps/.
+# =============================================================================
+parameters:
+  - name: artifactName
+    type: string
+    default: drop
+
+steps:
+  - task: PowerShell@2
+    displayName: 'Descargar artefacto ${{ parameters.artifactName }} (REST API, R3)'
+    env:
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+    inputs:
+      targetType: inline
+      script: |
+        try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13 } catch { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 }
+        $headers = @{ Authorization = "Bearer $env:SYSTEM_ACCESSTOKEN" }
+        $apiBase = "$(System.CollectionUri)$(System.TeamProject)/_apis/build/builds/$(Build.BuildId)"
+        $info = Invoke-RestMethod -Uri "$apiBase/artifacts?artifactName=${{ parameters.artifactName }}&api-version=5.0" -Headers $headers
+        $zip  = Join-Path $env:AGENT_TEMPDIRECTORY '${{ parameters.artifactName }}.zip'
+        Invoke-WebRequest -Uri $info.resource.downloadUrl -Headers $headers -OutFile $zip
+        $dest = Join-Path "$(Pipeline.Workspace)" '${{ parameters.artifactName }}'
+        if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
+        Expand-Archive -Path $zip -DestinationPath $dest -Force
+        # El zip suele contener una carpeta con el nombre del artefacto; el paquete real esta dentro.
+        $pkg = Join-Path $dest '${{ parameters.artifactName }}'
+        if (-not (Test-Path $pkg)) { $pkg = $dest }
+        Write-Host "##vso[task.setvariable variable=MsDeployPackage]$pkg"
+        Write-Host "Artefacto '${{ parameters.artifactName }}' descargado en: $pkg"

@@ -1,0 +1,52 @@
+# .gitattributes - Plantilla Ovillo.IA
+# Ovillo - plantilla del ecosistema
+#
+# DOS objetivos:
+#   1. Normalizar finales de linea (EOL) entre Windows/Linux/WSL.
+#   2. Driver merge=ours en archivos per-rama (evita conflicts en _hilo/*).
+#
+# IMPORTANTE: el driver "ours" debe activarse una sola vez por developer:
+#   git config --local merge.ours.driver true
+# (sin esto, los attributes merge=ours se ignoran silenciosamente).
+
+# ============================================================================
+# _hilo/ - Memoria del proyecto, contenido per-rama
+# ============================================================================
+# Estos archivos cambian constantemente segun la sesion activa y la rama
+# de trabajo. Al mergear main -> develop (o viceversa), siempre queremos
+# CONSERVAR la version de la rama destino (la que esta haciendo el merge).
+# Origen: hotfix v3.10.0 #1, evita merge conflicts recurrentes en multi-rama.
+_hilo/SESION_ACTUAL.md           merge=ours
+_hilo/ESTADO_PROYECTO.json       merge=ours
+_hilo/HISTORIAL_CAMBIOS.md       merge=ours
+
+# ============================================================================
+# .claude/ - Configuracion local del developer (per-dev, no per-proyecto)
+# ============================================================================
+.claude/settings.local.json       merge=ours
+
+# ============================================================================
+# Normalizacion EOL - CRLF en Windows
+# ============================================================================
+# Fuerza CRLF en checkout en Windows para todos los archivos de texto.
+# Esto asegura que Beyond Compare y otras herramientas no reporten
+# diferencias falsas por EOL entre repositorios.
+* text=auto eol=crlf
+
+# Archivos que SIEMPRE deben ser LF (scripts ejecutables en Linux/WSL)
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Binarios - no tocar
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.pdf binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.pfx binary
+*.cer binary

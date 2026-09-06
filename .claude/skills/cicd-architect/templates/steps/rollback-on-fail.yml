@@ -1,0 +1,34 @@
+# =============================================================================
+# steps/rollback-on-fail.yml
+# R15 capa 3: restaura el backup si un step previo del job fallo (deploy o smoke).
+# condition: failed(). Preserva appsettings.Production.json. Requiere:
+#   $(iisVirtualApp)   - nombre de la vApp (para la ruta del backup)
+#   $(iisAppPool)      - app pool a reciclar
+#   $(iisPhysicalPath) - ruta fisica REAL del sitio/vApp. Si esta vacia, se asume
+#                        C:\inetpub\wwwroot\<vApp>. DEBE coincidir con la usada en backup-pre-deploy.yml.
+#   $(backupRoot)      - raiz de backups (default C:\Backups).
+# Si el rollback automatico tambien falla, ver 05_CICD/RUNBOOK.md seccion 3.
+# =============================================================================
+steps:
+  - task: PowerShell@2
+    displayName: 'Rollback automatico si el deploy/smoke fallo (R15 capa 3)'
+    condition: failed()
+    inputs:
+      targetType: inline
+      script: |
+        $app        = "$(iisVirtualApp)"
+        $pool       = "$(iisAppPool)"
+        $dest       = "$(iisPhysicalPath)"
+        if ([string]::IsNullOrWhiteSpace($dest)) { $dest = "C:\inetpub\wwwroot\$app" }
+        $backupPath = "$(backupRoot)\$app\backup-$(Build.BuildId)"
+        $appcmd     = "$env:WINDIR\System32\inetsrv\appcmd.exe"
+        if (Test-Path $backupPath) {
+          Write-Warning "Deploy/smoke fallido. Restaurando backup $backupPath ..."
+          & $appcmd stop apppool "$pool"
+          Get-ChildItem -Path $dest -Force -Exclude 'appsettings.Production.json' | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item -Path (Join-Path $backupPath '*') -Destination $dest -Recurse -Force -Exclude '_backup-metadata.txt'
+          & $appcmd start apppool "$pool"
+          Write-Host "Rollback completado. Si la app sigue caida, ver 05_CICD/RUNBOOK.md seccion 3."
+        } else {
+          Write-Error "No hay backup en $backupPath para rollback. Restauracion manual: ver 05_CICD/RUNBOOK.md."
+        }

@@ -1,0 +1,110 @@
+{
+  "$schema": ".claude/schemas/ecosystem.config.schema.json",
+  "_doc": "Configuracion de ORGANIZACION del ecosistema Ovillo. Copiar a ecosystem.config.json en la raiz del proyecto y ajustar. Todos los valores mostrados son los defaults neutrales: sin este archivo, el ecosistema se comporta exactamente igual. Precedencia: ESTADO_PROYECTO.json (proyecto) > ecosystem.config.json (organizacion) > defaults. Validar con: node .claude/scripts/validate-config.js",
+  "configVersion": 1,
+
+  "organization": {
+    "name": "",
+    "shortName": "",
+    "namespacePrefix": "MyCompany",
+    "supportEmail": "",
+    "website": "",
+    "language": "es"
+  },
+
+  "theme": {
+    "primaryColor": "#33475B",
+    "secondaryColor": "#5A6B7B",
+    "logoUrl": ""
+  },
+
+  "cloud": {
+    "provider": "none",
+    "secrets": "dotenv",
+    "storage": "filesystem",
+    "telemetry": "otlp"
+  },
+
+  "identity": {
+    "idp": "none",
+    "authority": "",
+    "claims": { "roles": "roles", "name": "name", "email": "email" },
+    "defaultRoles": ["Admin", "Manager", "User"]
+  },
+
+  "database": {
+    "_doc": "Motor objetivo del codigo generado. Los defaults del ecosistema generan identificadores SQL en INGLES (verbos Get/Insert/Update/Delete/List/Search/Exists..., schemas tipo academic/finance). RECETA para organizacion con convencion en ESPANOL: allowedVerbs=[Obtener,Listar,Insertar,Actualizar,Eliminar,Desactivar,Buscar,Existe,Aprobar,Procesar,Calcular,Rpt] y, si aplica, forbiddenSuffixes=[_Listar,_Guardar], legacySchemas=[VentasLegacy,ComprasLegacy], legacyPrefixes=[int_,aud_,tmp_,migr_] (ejemplo tipico on-premise: engine=sqlserver, version=2017). Ver adr/ADR-F009.",
+    "engine": "sqlserver",
+    "version": null,
+    "naming": {
+      "storedProcedurePattern": "{schema}.{Verb}{Entity}",
+      "functionPrefix": "fn_",
+      "tableFunctionPrefix": "fnt_",
+      "viewPrefix": "vw_",
+      "triggerPrefix": "tr_",
+      "schemaCase": "lowercase",
+      "legacySchemas": [],
+      "allowedVerbs": [],
+      "forbiddenPrefixes": ["usp_", "sp_", "pr_", "proc_", "pa_"],
+      "forbiddenSuffixes": [],
+      "legacyPrefixes": [],
+      "legacyBaselineFile": ".claude/sql-legacy-baseline.txt"
+    }
+  },
+
+  "vcs": {
+    "type": "git",
+    "platform": "github",
+    "defaultBranch": "main",
+    "branchingStrategy": "github-flow",
+    "branchNamingConvention": "feature/{code}-{description}"
+  },
+
+  "cicd": {
+    "_doc": "Ejemplo de organizacion on-premise: platform=azure-pipelines, variant=server-2020, environments=[{name:pre, kind:app, url:https://pre.example.org, servers:[pre.example.org], deployTarget:pre-app}, ...].",
+    "platform": "none",
+    "variant": "",
+    "deployModel": "on-demand",
+    "environments": []
+  },
+
+  "integrations": [],
+  "_integrations_ejemplo": [
+    {
+      "name": "Oracle HCM Cloud",
+      "kind": "rest",
+      "folderPattern": "HCM.Services",
+      "context7Library": "oracle/oracle-hcm-cloud-rest-api",
+      "reason": "API con updates trimestrales - el schema cambia 4x al ano"
+    }
+  ],
+
+  "hub": {
+    "enabled": false,
+    "url": "",
+    "auth": "apikey",
+    "apiKeyHeader": "X-Hub-Api-Key",
+    "registerOnInstall": false
+  },
+
+  "distribution": {
+    "baseUrl": "",
+    "updateCheck": true
+  },
+
+  "hooks": {
+    "policy": "warn",
+    "blockList": []
+  },
+
+  "workflow": {
+    "taskTypes": [
+      { "code": "EV", "label": "Evolutivo / Feature" },
+      { "code": "DT", "label": "Deuda tecnica / Tech debt" }
+    ]
+  },
+
+  "mcp": {
+    "context7Url": ""
+  }
+}

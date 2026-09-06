@@ -1,0 +1,304 @@
+// ============================================================================
+// TEMPLATE: Service.cs - Servicio de Aplicación (CQRS Handlers)
+// Skill: generador-crud
+// Versión: 2.8.6
+// ============================================================================
+// USO: Reemplazar {{Entity}}, {{Entities}}, {{Namespace}}
+// ============================================================================
+// NOTA: Usa Mediator (martinothamar, MIT) en lugar de MediatR (comercial v12+)
+//       La API (IRequest, IRequestHandler) es compatible con ambos
+// ============================================================================
+
+using AutoMapper;
+using Mediator;  // ← Mediator (MIT/gratuito) en lugar de MediatR
+using Microsoft.Extensions.Logging;
+using {{Namespace}}.Application.Common.Exceptions;
+using {{Namespace}}.Application.Common.Interfaces;
+using {{Namespace}}.Domain.Entities;
+
+namespace {{Namespace}}.Application.Features.{{Entities}};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUERIES
+// ═══════════════════════════════════════════════════════════════════════════
+
+#region Get{{Entities}}Query - Listado paginado
+
+public record Get{{Entities}}Query(int Page, int Size) : IRequest<PaginatedResult<{{Entity}}Dto>>;
+
+public class Get{{Entities}}QueryHandler
+    : IRequestHandler<Get{{Entities}}Query, PaginatedResult<{{Entity}}Dto>>
+{
+    private readonly I{{Entity}}Repository _repository;
+    private readonly IMapper _mapper;
+
+    public Get{{Entities}}QueryHandler(
+        I{{Entity}}Repository repository,
+        IMapper mapper)
+    {
+        _repository = repository;
+        _mapper = mapper;
+    }
+
+    public async Task<PaginatedResult<{{Entity}}Dto>> Handle(
+        Get{{Entities}}Query request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _repository.GetPaginatedAsync(
+            request.Page,
+            request.Size,
+            cancellationToken);
+
+        return new PaginatedResult<{{Entity}}Dto>(
+            _mapper.Map<List<{{Entity}}Dto>>(result.Items),
+            result.TotalCount,
+            request.Page,
+            request.Size);
+    }
+}
+
+#endregion
+
+#region Get{{Entity}}ByIdQuery - Obtener por ID
+
+public record Get{{Entity}}ByIdQuery(int Id) : IRequest<{{Entity}}Dto?>;
+
+public class Get{{Entity}}ByIdQueryHandler
+    : IRequestHandler<Get{{Entity}}ByIdQuery, {{Entity}}Dto?>
+{
+    private readonly I{{Entity}}Repository _repository;
+    private readonly IMapper _mapper;
+
+    public Get{{Entity}}ByIdQueryHandler(
+        I{{Entity}}Repository repository,
+        IMapper mapper)
+    {
+        _repository = repository;
+        _mapper = mapper;
+    }
+
+    public async Task<{{Entity}}Dto?> Handle(
+        Get{{Entity}}ByIdQuery request,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _repository.GetByIdAsync(request.Id, cancellationToken);
+        return entity is null ? null : _mapper.Map<{{Entity}}Dto>(entity);
+    }
+}
+
+#endregion
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMMANDS
+// ═══════════════════════════════════════════════════════════════════════════
+
+#region Create{{Entity}}Command
+
+public record Create{{Entity}}Command : IRequest<{{Entity}}Dto>
+{
+    {{PropiedadesCommand}}
+}
+
+public class Create{{Entity}}CommandHandler
+    : IRequestHandler<Create{{Entity}}Command, {{Entity}}Dto>
+{
+    private readonly I{{Entity}}Repository _repository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMapper _mapper;
+    private readonly ILogger<Create{{Entity}}CommandHandler> _logger;
+
+    public Create{{Entity}}CommandHandler(
+        I{{Entity}}Repository repository,
+        IUnitOfWork unitOfWork,
+        IMapper mapper,
+        ILogger<Create{{Entity}}CommandHandler> logger)
+    {
+        _repository = repository;
+        _unitOfWork = unitOfWork;
+        _mapper = mapper;
+        _logger = logger;
+    }
+
+    public async Task<{{Entity}}Dto> Handle(
+        Create{{Entity}}Command request,
+        CancellationToken cancellationToken)
+    {
+        // Crear entidad usando factory del dominio
+        var entity = {{Entity}}.Create(
+            {{ArgumentosCrear}}
+        );
+
+        // Persistir
+        await _repository.AddAsync(entity, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "{{Entity}} {Id} creado/a",
+            entity.Id);
+
+        return _mapper.Map<{{Entity}}Dto>(entity);
+    }
+}
+
+#endregion
+
+#region Update{{Entity}}Command
+
+public record Update{{Entity}}Command : IRequest
+{
+    public int Id { get; init; }
+    {{PropiedadesCommand}}
+}
+
+public class Update{{Entity}}CommandHandler : IRequestHandler<Update{{Entity}}Command>
+{
+    private readonly I{{Entity}}Repository _repository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<Update{{Entity}}CommandHandler> _logger;
+
+    public Update{{Entity}}CommandHandler(
+        I{{Entity}}Repository repository,
+        IUnitOfWork unitOfWork,
+        ILogger<Update{{Entity}}CommandHandler> logger)
+    {
+        _repository = repository;
+        _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+
+    public async Task Handle(
+        Update{{Entity}}Command request,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _repository.GetByIdAsync(request.Id, cancellationToken)
+            ?? throw new NotFoundException(nameof({{Entity}}), request.Id);
+
+        // Actualizar usando método del dominio
+        entity.Actualizar(
+            {{ArgumentosActualizar}}
+        );
+
+        await _repository.UpdateAsync(entity, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "{{Entity}} {Id} actualizado/a",
+            entity.Id);
+    }
+}
+
+#endregion
+
+#region Delete{{Entity}}Command
+
+public record Delete{{Entity}}Command(int Id) : IRequest;
+
+public class Delete{{Entity}}CommandHandler : IRequestHandler<Delete{{Entity}}Command>
+{
+    private readonly I{{Entity}}Repository _repository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserService _currentUser;
+    private readonly ILogger<Delete{{Entity}}CommandHandler> _logger;
+
+    public Delete{{Entity}}CommandHandler(
+        I{{Entity}}Repository repository,
+        IUnitOfWork unitOfWork,
+        ICurrentUserService currentUser,
+        ILogger<Delete{{Entity}}CommandHandler> logger)
+    {
+        _repository = repository;
+        _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
+        _logger = logger;
+    }
+
+    public async Task Handle(
+        Delete{{Entity}}Command request,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _repository.GetByIdAsync(request.Id, cancellationToken)
+            ?? throw new NotFoundException(nameof({{Entity}}), request.Id);
+
+        // Soft delete usando método del dominio
+        entity.Delete(_currentUser.UserName ?? "system");
+
+        await _repository.UpdateAsync(entity, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "{{Entity}} {Id} eliminado/a por {User}",
+            entity.Id,
+            _currentUser.UserName);
+    }
+}
+
+#endregion
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DTO
+// ═══════════════════════════════════════════════════════════════════════════
+
+public record {{Entity}}Dto
+{
+    public int Id { get; init; }
+    {{PropiedadesDto}}
+    public DateTime CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+    public DateTime? ModifiedAt { get; init; }
+    public string? ModifiedBy { get; init; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAPPING PROFILE
+// ═══════════════════════════════════════════════════════════════════════════
+
+public class {{Entity}}MappingProfile : Profile
+{
+    public {{Entity}}MappingProfile()
+    {
+        CreateMap<{{Entity}}, {{Entity}}Dto>();
+    }
+}
+
+// ============================================================================
+// EJEMPLO GENERADO - ScholarshipService
+// ============================================================================
+/*
+public record GetScholarshipsQuery(int Page, int Size) : IRequest<PaginatedResult<ScholarshipDto>>;
+
+public record GetScholarshipByIdQuery(int Id) : IRequest<ScholarshipDto?>;
+
+public record CreateScholarshipCommand : IRequest<ScholarshipDto>
+{
+    public required string Code { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public decimal Amount { get; init; }
+    public DateTime StartDate { get; init; }
+    public DateTime EndDate { get; init; }
+}
+
+public record UpdateScholarshipCommand : IRequest
+{
+    public int Id { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public decimal Amount { get; init; }
+}
+
+public record DeleteScholarshipCommand(int Id) : IRequest;
+
+public record ScholarshipDto
+{
+    public int Id { get; init; }
+    public string Code { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public decimal Amount { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public DateTime StartDate { get; init; }
+    public DateTime EndDate { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+}
+*/

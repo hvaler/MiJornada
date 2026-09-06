@@ -1,0 +1,193 @@
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Zero-touch de la HUB_SERVICE_KEY del QR de calidad (ADR-046).
+
+.DESCRIPTION
+    Aprovisiona la service-key del dashboard de calidad SIN intervencion manual:
+      1. Resuelve la apiKey per-dev del consumidor (_hilo/.mcp-credentials.json).
+      2. Pide al Hub que EMITA/ROTE la service-key del proyecto (POST /v2/sync/emit-service-key).
+         La key viaja en memoria; NUNCA se imprime ni se pasa por linea de comandos.
+      3. Crea o actualiza el Variable Group de TFS metiendo HUB_SERVICE_KEY (isSecret).
+      4. Autoriza el Variable Group a la canalizacion.
+    Lo invoca /cicd-init FASE 2.7 (opcion Auto). Degrada con elegancia: si falla, /cicd-init
+    cae al flujo manual (admin emite por SQL + pega en el VG) y el step quality-sync sigue
+    siendo best-effort (sin key -> avisa, no rompe el build).
+
+    REST TFS verificada empiricamente (TFS 2020, 2026-06-22):
+      - variablegroups: api-version 6.0-preview.2 (6.0 da 400).
+      - CREATE exige variableGroupProjectReferences + GUID del proyecto TFS.
+      - secretos: GET los devuelve con value=null -> NO reescribir otros secretos (los borraria).
+      - autorizar VG->pipeline: PATCH pipelines/pipelinePermissions/variablegroup/{id} api 5.1-preview.1.
+
+    NUNCA imprime la service-key (stdout solo [OK]/[WARN] + ids/conteos).
+
+.PARAMETER ProjectId        GUID del proyecto en el Hub (default: el de .mcp-credentials.json).
+.PARAMETER ServerUrl        Base del Hub (default: el de .mcp-credentials.json; se normaliza /mcp -> /hub).
+.PARAMETER TfsCollectionUrl URL de la coleccion TFS (ej. https://devops.example.org/SRV-GestionAcademica).
+.PARAMETER TfsProject       Name del proyecto TFS (ej. EWP).
+.PARAMETER PipelineId       Id de la definicion de build (0 = no autorizar la canalizacion).
+.PARAMETER VgName           Name del Variable Group (ej. EWP-secrets / Principal).
+.PARAMETER Label            Etiqueta de la service-key (default ci-quality).
+.PARAMETER Rotate           Fuerza nueva emision aunque el VG ya tenga la key.
+.PARAMETER WhatIf           Muestra lo que haria sin emitir/crear/autorizar.
+
+.OUTPUTS
+    exit 0 = OK (o autorizacion manual pendiente)  | 3 = sin apiKey (-> manual)
+    exit 4 = 401 del Hub (apiKey rotada)            | 5 = 404 del Hub (< 1.7.0 -> manual)
+    exit 6 = fallo REST TFS o el VG tiene OTROS secretos (riesgo de borrado -> manual)
+#>
+[CmdletBinding()]
+param(
+    [string] $ProjectId        = '{{HUB_PROJECT_ID}}',
+    [string] $ServerUrl        = '{{HUB_SERVER_URL}}',
+    [string] $TfsCollectionUrl = '{{TFS_COLLECTION_URL}}',
+    [string] $TfsProject       = '{{TFS_PROJECT}}',
+    [int]    $PipelineId       = {{PIPELINE_ID}},
+    [string] $VgName           = '{{VG_NAME}}',
+    [string] $Label            = 'ci-quality',
+    [switch] $Rotate,
+    [switch] $WhatIf
+)
+
+$ErrorActionPreference = 'Stop'
+try {
+    [Net.ServicePointManager]::SecurityProtocol =
+        [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+} catch { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 }
+
+$VG_API   = '6.0-preview.2'
+$AUTH_API = '5.1-preview.1'
+
+function Get-HttpStatus($err) {
+    try { return [int]$err.Exception.Response.StatusCode } catch { return 0 }
+}
+
+# --- 1. Resolver apiKey per-dev + serverUrl + projectId (NO imprimir la apiKey) ---
+$credPath = Join-Path (Get-Location) '_hilo/.mcp-credentials.json'
+if (-not (Test-Path $credPath)) {
+    Write-Host "[ERR] No existe _hilo/.mcp-credentials.json. Ejecuta 'irm | iex' (arranque.ps1) en este repo, o usa el flujo manual (FASE 2.7)."
+    exit 3
+}
+$cred = Get-Content $credPath -Raw | ConvertFrom-Json
+$apiKey = $cred.apiKey
+if ([string]::IsNullOrWhiteSpace($apiKey)) { Write-Host "[ERR] .mcp-credentials.json sin apiKey -> flujo manual."; exit 3 }
+if ([string]::IsNullOrWhiteSpace($ProjectId) -or $ProjectId -like '{{*}}') { $ProjectId = $cred.projectId }
+if ([string]::IsNullOrWhiteSpace($ServerUrl) -or $ServerUrl -like '{{*}}') { $ServerUrl = $cred.serverUrl }
+if ($cred.projectId -and $ProjectId -and ($cred.projectId -ne $ProjectId)) {
+    Write-Host "[ERR] El projectId pedido ($ProjectId) no coincide con el de tus credenciales ($($cred.projectId)). Abortando por seguridad."
+    exit 3
+}
+# Normalizar la base del Hub (quitar sufijo /mcp si viene incluido)
+$hub = ($ServerUrl -replace '/+$','') -replace '/mcp$','/hub'
+
+# --- 2. Emitir/rotar la service-key via Hub (en memoria) ---
+$svcKey = $null; $revoked = 0
+if ($WhatIf) {
+    Write-Host "[WHATIF] Emitiria service-key (label '$Label') para $ProjectId via $hub/v2/sync/emit-service-key"
+} else {
+    $emitBody = @{ projectId = $ProjectId; label = $Label } | ConvertTo-Json
+    try {
+        $resp = Invoke-RestMethod "$hub/v2/sync/emit-service-key" -Method POST `
+                  -Headers @{ 'X-Hub-Api-Key' = $apiKey; 'Content-Type' = 'application/json' } `
+                  -Body $emitBody -TimeoutSec 30
+        $svcKey = $resp.serviceKey
+        $revoked = [int]$resp.revokedPrevious
+    } catch {
+        $code = Get-HttpStatus $_
+        if ($code -eq 401) { Write-Host "[ERR] Hub 401: tu apiKey per-dev no autentica (rotada?). Re-ejecuta 'irm | iex'. -> manual"; exit 4 }
+        if ($code -eq 404) { Write-Host "[ERR] Hub 404: el endpoint emit-service-key no existe (Hub < 1.7.0). -> manual"; exit 5 }
+        Write-Host "[ERR] Hub emit-service-key fallo (HTTP $code): $($_.Exception.Message) -> manual"; exit 5
+    }
+    if ([string]::IsNullOrWhiteSpace($svcKey)) { Write-Host "[ERR] El Hub no devolvio service-key. -> manual"; exit 5 }
+}
+
+# --- 3. GUID del proyecto TFS (requerido por CREATE) ---
+$projGuid = $null
+try {
+    $p = Invoke-RestMethod "$TfsCollectionUrl/_apis/projects/$TfsProject`?api-version=6.0" -UseDefaultCredentials -TimeoutSec 20
+    $projGuid = $p.id
+} catch {
+    Write-Host "[ERR] No se pudo resolver el GUID del proyecto TFS '$TfsProject' (HTTP $(Get-HttpStatus $_)). -> manual"; exit 6
+}
+
+$apiBase = "$TfsCollectionUrl/$TfsProject/_apis"
+
+# --- 4. Localizar el VG por name ---
+$existing = $null
+try {
+    $list = Invoke-RestMethod "$apiBase/distributedtask/variablegroups?api-version=$VG_API" -UseDefaultCredentials -TimeoutSec 20
+    $existing = $list.value | Where-Object { $_.name -eq $VgName } | Select-Object -First 1
+} catch { Write-Host "[ERR] No se pudo listar Variable Groups (HTTP $(Get-HttpStatus $_)). -> manual"; exit 6 }
+
+# Idempotencia: si ya existe la key y no se pide -Rotate, no tocar
+if ($existing -and -not $Rotate -and -not $WhatIf) {
+    $sv = $existing.variables.PSObject.Properties | Where-Object { $_.Name -eq 'HUB_SERVICE_KEY' }
+    if ($sv -and $sv.Value.isSecret -eq $true) {
+        # Ya hay una key (secreta). Hemos emitido una nueva arriba -> la metemos igualmente para
+        # asegurar consistencia (la emision ya revoco la anterior). Continuar al PUT.
+    }
+}
+
+# --- 5. Construir el set de variables preservando las existentes ---
+#     OJO: los secretos AJENOS vuelven con value=null en el GET -> reescribirlos los borraria (R23).
+$varsObj = @{}
+$otrosSecretos = @()
+if ($existing) {
+    foreach ($p in $existing.variables.PSObject.Properties) {
+        if ($p.Name -eq 'HUB_SERVICE_KEY') { continue }
+        if ($p.Value.isSecret -eq $true) {
+            $otrosSecretos += $p.Name
+            # NO lo reenviamos (value=null lo borraria). Se avisa abajo.
+        } else {
+            $varsObj[$p.Name] = @{ value = $p.Value.value }
+        }
+    }
+}
+if ($otrosSecretos.Count -gt 0) {
+    Write-Host "[ERR] El VG '$VgName' tiene OTROS secretos ($($otrosSecretos -join ', ')). Un PUT los borraria (TFS devuelve value=null). Usa un VG dedicado para la HUB_SERVICE_KEY o anadela a mano. -> manual"
+    exit 6
+}
+# Nuestra key (isSecret). En WhatIf usamos un placeholder visible (no se enviara).
+$varsObj['HUB_SERVICE_KEY'] = @{ value = ($(if ($WhatIf) { '<whatif>' } else { $svcKey })); isSecret = $true }
+
+if ($WhatIf) {
+    Write-Host "[WHATIF] $(if($existing){'PUT actualizaria'}else{'POST crearia'}) VG '$VgName' con HUB_SERVICE_KEY (isSecret); autorizaria pipeline $PipelineId."
+    exit 0
+}
+
+# --- 6. CREATE (POST) o UPDATE (PUT) ---
+$refs = @(@{ name = $VgName; projectReference = @{ id = $projGuid; name = $TfsProject } })
+$vgId = $null
+try {
+    if ($existing) {
+        $body = @{ id = $existing.id; type = 'Vsts'; name = $VgName; variables = $varsObj; variableGroupProjectReferences = $refs } | ConvertTo-Json -Depth 8
+        $r = Invoke-RestMethod "$apiBase/distributedtask/variablegroups/$($existing.id)?api-version=$VG_API" -Method PUT -Body $body -ContentType 'application/json' -UseDefaultCredentials -TimeoutSec 25
+        $vgId = $existing.id
+    } else {
+        $body = @{ type = 'Vsts'; name = $VgName; variables = $varsObj; variableGroupProjectReferences = $refs } | ConvertTo-Json -Depth 8
+        $r = Invoke-RestMethod "$apiBase/distributedtask/variablegroups?api-version=$VG_API" -Method POST -Body $body -ContentType 'application/json' -UseDefaultCredentials -TimeoutSec 25
+        $vgId = $r.id
+    }
+} catch {
+    Write-Host "[ERR] Fallo al $(if($existing){'actualizar'}else{'crear'}) el VG '$VgName' (HTTP $(Get-HttpStatus $_)): $($_.Exception.Message) -> manual"
+    exit 6
+}
+$svcKey = $null  # ya no se necesita; liberar
+
+# --- 7. Autorizar el VG a la canalizacion (best-effort) ---
+$authStatus = 'no-aplica'
+if ($PipelineId -gt 0) {
+    $authStatus = 'manual'
+    try {
+        $authBody = @{ pipelines = @(@{ id = $PipelineId; authorized = $true }) } | ConvertTo-Json -Depth 5
+        Invoke-RestMethod "$apiBase/pipelines/pipelinePermissions/variablegroup/$vgId`?api-version=$AUTH_API" -Method PATCH -Body $authBody -ContentType 'application/json' -UseDefaultCredentials -TimeoutSec 20 | Out-Null
+        $authStatus = 'si'
+    } catch {
+        $code = Get-HttpStatus $_
+        Write-Host "[WARN] No se pudo autorizar el VG a la canalizacion (HTTP $code). Autorizalo en TFS UI: Library -> $VgName -> Pipeline permissions -> + (o pide a Sistemas). La key YA esta puesta."
+    }
+}
+
+Write-Host "[OK] HUB_SERVICE_KEY provisionada en VG '$VgName' (id=$vgId); revocadas $revoked key(s) previas del label '$Label'; canalizacion autorizada=$authStatus."
+exit 0

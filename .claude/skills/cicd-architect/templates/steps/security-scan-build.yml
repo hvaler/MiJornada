@@ -1,0 +1,67 @@
+# =============================================================================
+# steps/security-scan-build.yml
+# R22: gate de ciberseguridad (patron verdict-file). Corre 1 VEZ en el stage Build,
+# con continueOnError:true (NO tumba el Build, asimetria deliberada vs gate de cobertura/R18),
+# y publica el artefacto 'security-report'. Los stages de deploy lo parsean con
+# steps/security-verdict-gate.yml (DeployDev=WARN, DeployDemo/Prod=BLOCK).
+#
+# Variables del pipeline esperadas: $(solutionPath) $(apiProject) (stack dotnet)
+# o $(workingDir) (stack spa).
+# El script .NET vive en 05_CICD/scripts/security-scan.ps1 (ASCII puro, R13),
+# materializado por /cicd-init desde skills/cicd-architect/templates/security-scan.ps1.
+# =============================================================================
+parameters:
+  - name: stack
+    type: string
+    default: dotnet        # dotnet | spa
+
+steps:
+  - task: PowerShell@2
+    displayName: 'R22 security scan (verdict-file, no bloquea Build)'
+    continueOnError: true
+    condition: always()        # HALLAZGO F: corre aunque un step previo falle (genera verdict)
+    inputs:
+      targetType: inline
+      script: |
+        try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13 } catch { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 }
+        $out = Join-Path $env:AGENT_TEMPDIRECTORY 'security-report'
+        New-Item -ItemType Directory -Force -Path $out | Out-Null
+        if ('${{ parameters.stack }}' -eq 'dotnet') {
+          & "$(Build.SourcesDirectory)\05_CICD\scripts\security-scan.ps1" `
+            -SolutionPath "$(solutionPath)" `
+            -ApiProject   "$(apiProject)" `
+            -SourceRoot   "$(Build.SourcesDirectory)" `
+            -OutputDir    $out
+        } else {
+          # Variante SPA (R22): npm audit en el check 1; hardening/SAST/secrets = skipped.
+          # Verdict compatible con el shape que parsea security-verdict-gate.yml.
+          Push-Location "$(workingDir)"
+          $raw = (npm audit --json 2>$null | Out-String)
+          Pop-Location
+          $v = @{ critical = 0; high = 0; moderate = 0; low = 0 }
+          try { $a = $raw | ConvertFrom-Json; if ($a.metadata.vulnerabilities) { $v = $a.metadata.vulnerabilities } } catch { Write-Warning "npm audit sin JSON parseable; verdict en 0 (inconclusive)." }
+          $report = [ordered]@{
+            schema = 'dt005-security-report/v1'; buildId = $env:BUILD_BUILDID; stack = 'spa'
+            summary          = [ordered]@{ Critical = [int]$v.critical; High = [int]$v.high; Moderate = [int]$v.moderate; Low = [int]$v.low; secrets = 0 }
+            effectiveSummary = [ordered]@{ Critical = [int]$v.critical; High = [int]$v.high; Moderate = [int]$v.moderate; Low = [int]$v.low; secrets = 0 }
+            checks = [ordered]@{ vulnerableDependencies = 'npm audit'; configHardening = 'skipped'; sast = 'skipped'; secrets = 'skipped' }
+          }
+          ($report | ConvertTo-Json -Depth 8) | Out-File -LiteralPath (Join-Path $out 'security-report.json') -Encoding UTF8
+        }
+        Write-Host "security-report generado en $out"
+
+  # HALLAZGO F: el gate NUNCA debe tumbar el Build por un path inexistente.
+  - task: PowerShell@2
+    displayName: 'R22 asegurar carpeta del verdict (fail-safe)'
+    condition: always()
+    inputs:
+      targetType: inline
+      script: |
+        New-Item -ItemType Directory -Force -Path (Join-Path $env:AGENT_TEMPDIRECTORY 'security-report') | Out-Null
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publicar security-report'
+    condition: always()
+    inputs:
+      PathtoPublish: '$(Agent.TempDirectory)/security-report'
+      ArtifactName: 'security-report'

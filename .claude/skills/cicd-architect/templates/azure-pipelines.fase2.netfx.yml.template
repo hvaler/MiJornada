@@ -1,0 +1,246 @@
+# =============================================================================
+# {{PROYECTO_NOMBRE}} - Pipeline CI + CD  (FASE 2, stack .NET Framework clasico)  [4a variante de stack]
+# Ovillo cicd-architect netfx @ {{TEMPLATE_STAMP}}   (sello de plantilla; /cicd-status detecta drift)
+# -----------------------------------------------------------------------------
+# Receta VALIDADA end-to-end en piloto MyCompany.WebCorporativa (2026-06-04, build #20260604.14 verde,
+# 4 stages: Build verde + Deploy Dev/Demo/Prod skipped on-demand).
+# Stack: .NET Framework 4.8 (MVC5 + WebApi2, MSBuild + packages.config). Build NO usa dotnet:
+#   Restore NuGetCommand@2 | Build VSBuild@1 (+ paquete MSDeploy) | Test VSTest@2 | Deploy MSDeploy a IIS.
+# Modelo ON-DEMAND (R20): push SOLO construye; deploy con DeployEnv=<dev|pre|pro> (/cicd-deploy).
+# Modelo BRANCH-GATED (R24, gitlab-flow/gitflow con ramas por entorno): usar la variante
+#   azure-pipelines.fase2.netfx.branch-gated.yml.template (3 VSBuild condicionales por rama + drop-dev/pre/pro).
+#
+# === /cicd-init DEBE GARANTIZAR (lecciones del piloto, ver memorias cicd-netfx-classic-stack + cicd-tfs2020-definition-queue) ===
+#  1. definition.queue != NULL (TEC-007): tras crear la definicion por API, asignar la cola BUILDERS
+#     (PUT def con Add-Member). Si NULL -> TODO build falla instant "No pool was specified".
+#  2. NuGet.config en el repo ({{NUGET_CONFIG_PATH}}) con feed interno de la organización 'Internal'
+#     (\\build01.example.org\repositorio\Paquetes) + nuget.org. El agente NO hereda el config de user.
+#  3. NuGetCommand@2 con feedsToUse:config + nugetConfigPath (sino usa solo nuget.org -> MyCompany.* NotFound).
+#  4. El .sln con el header 'Microsoft Visual Studio Solution File...' en LINEA 1 (un comentario delante
+#     rompe el parser MSBuild14 de nuget.exe: "No file format header found").
+#  5. Rol de la cola del proyecto: 'Project Valid Users' = User (no Reader) para autoservicio del PATCH pipelinePermissions.
+#  6. Todos los proyectos del .sln COMMITEADOS (si falta el de tests -> MSB3202).
+#  7. VSTest codeCoverageEnabled:false si el agente no tiene IntelliTrace profiler (colector VS tumba VSTest exit 1 con tests OK).
+#  8. Materializar steps/*.yml + 05_CICD/scripts/security-scan.ps1 en el repo (R22).
+#  9. Agente LADYADA con VS Build Tools (ya presente en el piloto: VS 2022 BuildTools).
+#
+# Placeholders: {{PROYECTO_NOMBRE}} {{BRANCH}} {{SRC_DIR}} {{TEST_DIR}} {{SLN_PATH}} {{WEB_PROJECT}}
+#               {{NUGET_CONFIG_PATH}} {{IIS_VIRTUAL_APP}} {{IIS_APP_POOL}} {{APPROVER_EMAIL}}
+#               {{DEV_URL}} {{DEMO_URL}} {{PROD_URL}} {{TESTPLATFORM_NUPKG}}  (smoke best-effort por entorno)
+# Steps reutilizables a materializar (skills/cicd-architect/templates/steps/): download-artifact-rest,
+#   security-scan-build, security-verdict-gate, backup-pre-deploy, rollback-on-fail, smoke-besteffort.
+# Script de registro TFS: registrar-pipeline-tfs.ps1.template (TEC-007 + TEC-003 + R17 + R20).
+# =============================================================================
+
+name: $(date:yyyyMMdd)$(rev:.r)
+
+trigger:
+  branches:
+    include:
+      - {{BRANCH}}
+  paths:
+    include:
+      - '{{SRC_DIR}}/**'
+      - '{{SRC_DIR}}/**/*'        # R7: doble patron
+      - '{{TEST_DIR}}/**'
+      - '{{TEST_DIR}}/**/*'
+      - 'azure-pipelines.yml'
+
+pr: none
+
+variables:
+  # R20 (TEC-009, piloto GuiasDocentes): DeployEnv NO se declara aqui. Es variable de la DEFINICION
+  # (settable at queue time, default '', la pone FASE 2.5 registrar-pipeline-tfs.ps1). Declararla en
+  # el YAML la ECLIPSA: en runtime vale siempre '' y los stages de deploy quedan SIEMPRE skipped
+  # (CD on-demand no dispara nunca). Las condiciones la leen igual con variables['DeployEnv'].
+  - name: buildConfiguration
+    value: 'Release'
+  - name: buildPlatform
+    value: 'Any CPU'
+  - name: solution
+    value: '{{SLN_PATH}}'
+  - name: solutionPath            # alias que esperan los steps R22
+    value: '{{SLN_PATH}}'
+  - name: apiProject              # proyecto web (para el scan R22)
+    value: '{{WEB_PROJECT}}'
+  - name: iisVirtualApp
+    value: '{{IIS_VIRTUAL_APP}}'
+  - name: iisAppPool
+    value: '{{IIS_APP_POOL}}'
+  - name: iisPhysicalPath         # R15: ruta fisica REAL de la vApp en disco. Vacio = C:\inetpub\wwwroot\<vApp>.
+    value: '{{IIS_PHYSICAL_PATH}}'  # Rellenar si la vApp NO cuelga de wwwroot (ej. C:\inetpub\wwwroot\MyApp.api\miapp). La consumen backup-pre-deploy.yml + rollback-on-fail.yml.
+  - name: backupRoot              # R15: raiz de backups pre-deploy. Override si el server no tiene unidad D:.
+    value: 'C:\Backups'
+
+stages:
+  # ── STAGE 1: BUILD (auto en cada push) ──────────────────────────────────
+  - stage: Build
+    displayName: 'Build & Test'
+    jobs:
+      - job: BuildAndTest
+        pool:
+          name: BUILDERS                                     # R1
+          demands:
+            - Agent.ComputerName -equals LADYADA             # R1
+        timeoutInMinutes: 30
+        steps:
+          - checkout: self
+            clean: true
+          - task: NuGetToolInstaller@1
+            displayName: 'Instalar nuget.exe'
+            inputs:
+              versionSpec: '6.x'
+          - task: NuGetCommand@2
+            displayName: 'NuGet restore (solucion)'
+            inputs:
+              command: 'restore'
+              restoreSolution: '$(solution)'
+              feedsToUse: 'config'                           # usar NuGet.config del repo (feed Internal interno)
+              nugetConfigPath: '{{NUGET_CONFIG_PATH}}'
+          - task: VSBuild@1
+            displayName: 'VSBuild solucion (MSBuild) + paquete MSDeploy'
+            inputs:
+              solution: '$(solution)'
+              vsVersion: 'latest'
+              configuration: '$(buildConfiguration)'
+              platform: '$(buildPlatform)'
+              msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(Build.ArtifactStagingDirectory)"'
+          # TEC-008: agente con vstest 16.11 (enum sin 17.0); para adapter MSTest >=4.x se instala
+          # vstest 18.x desde el feed Internal (netShare). Prerequisito: Microsoft.TestPlatform en el feed (PERMISOS_CICD).
+          - task: VisualStudioTestPlatformInstaller@1
+            displayName: 'vstest.console 18.x (feed Internal)'
+            inputs:
+              packageFeedSelector: 'netShare'
+              netShare: '{{TESTPLATFORM_NUPKG}}'   # ej. \\build01.example.org\repositorio\MyOrg\PaquetesNuget\Microsoft.TestPlatform.18.6.0.nupkg
+          - task: VSTest@2
+            displayName: 'VSTest'
+            inputs:
+              vsTestVersion: 'toolsInstaller'      # usa el 18.x del installer, NO el 16.11 del agente (TEC-008)
+              testSelector: 'testAssemblies'
+              testAssemblyVer2: |
+                **\*Tests.dll
+                !**\*TestAdapter.dll
+                !**\obj\**
+              searchFolder: '$(System.DefaultWorkingDirectory)'
+              configuration: '$(buildConfiguration)'
+              codeCoverageEnabled: false                     # ver prerequisito 7 (colector VS sin IntelliTrace)
+          - template: steps/security-scan-build.yml          # R22 verdict-file (no tumba el Build)
+            parameters:
+              stack: dotnet
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish artifact drop'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+
+  # ── STAGE 2: DEPLOY DEV (DeployEnv=dev) ─────────────────────────────────
+  - stage: DeployDev
+    displayName: 'Deploy a DEV (on-demand)'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['DeployEnv'], 'dev'))    # R20
+    jobs:
+      - job: DeployToDev
+        pool:
+          name: BUILDERS
+          demands:
+            - DeployTarget -equals {{DEPLOY_DEMAND_DEV}}    # R1/R25 (<env>-<app|svc>)
+        timeoutInMinutes: 15
+        steps:
+          - checkout: none                                   # R8
+          - template: steps/security-verdict-gate.yml        # R22 (DEV = WARN)
+            parameters:
+              mode: warn
+          - template: steps/download-artifact-rest.yml       # R3 -> $(MsDeployPackage)
+          - task: IISWebAppDeploymentOnMachineGroup@0        # R4
+            displayName: 'Deploy IIS (DEV)'
+            inputs:
+              WebSiteName: 'Default Web Site'
+              VirtualApplication: '$(iisVirtualApp)'
+              Package: '$(MsDeployPackage)\*.zip'            # netfx: paquete MSDeploy .zip (no carpeta como .NET)
+              RemoveAdditionalFilesFlag: true
+              TakeAppOfflineFlag: true                       # R10 (System.Web in-process)
+          - template: steps/smoke-besteffort.yml             # R11 (best-effort, app sin /health/*; NO throw)
+            parameters:
+              appUrl: '{{DEV_URL}}'
+
+  # ── STAGE 3: DEPLOY DEMO/Pre (DeployEnv=pre es el gate) ─────────────────
+  - stage: DeployDemo
+    displayName: 'Deploy a DEMO/Pre (on-demand)'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['DeployEnv'], 'pre'))    # R20
+    jobs:
+      # FB-F (v3.15.0-h3): DEMO/Pre SIN ManualValidation en on-demand. El gate ya es la condicion
+      # DeployEnv=='pre' + el comando /cicd-deploy --env pre (la aprobacion explicita). PROD si gatea.
+      # (Modelo 'auto' -DEMO se despliega en push sin DeployEnv-: re-anadir aqui un job WaitForApproval con
+      #  ManualValidation@0 + 'dependsOn: WaitForApproval' en DeployToDemo. Ver P2-bis en /cicd-init.)
+      - job: DeployToDemo
+        condition: succeeded()
+        pool:
+          name: BUILDERS
+          demands:
+            - DeployTarget -equals {{DEPLOY_DEMAND_PRE}}    # R1/R25
+        timeoutInMinutes: 30
+        steps:
+          - checkout: none
+          - template: steps/security-verdict-gate.yml        # R22 (DEMO = BLOCK)
+            parameters:
+              mode: block
+          - template: steps/download-artifact-rest.yml
+          - template: steps/backup-pre-deploy.yml            # R15 capa 1
+          - task: IISWebAppDeploymentOnMachineGroup@0
+            displayName: 'Deploy IIS (DEMO)'
+            inputs:
+              WebSiteName: 'Default Web Site'
+              VirtualApplication: '$(iisVirtualApp)'
+              Package: '$(MsDeployPackage)\*.zip'
+              RemoveAdditionalFilesFlag: true
+              TakeAppOfflineFlag: true
+              AdditionalArguments: '-enableRule:DoNotDeleteRule'   # R15 capa 2
+          - template: steps/smoke-besteffort.yml             # R11 (best-effort, app sin /health/*; NO throw)
+            parameters:
+              appUrl: '{{DEMO_URL}}'
+          - template: steps/rollback-on-fail.yml             # R15 capa 3 (condition: failed())
+
+  # ── STAGE 4: DEPLOY PROD (DeployEnv=pro) ────────────────────────────────
+  - stage: DeployProd
+    displayName: 'Deploy a PROD (on-demand)'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['DeployEnv'], 'pro'))    # R20
+    jobs:
+      - job: WaitForApprovalProd
+        pool: server
+        timeoutInMinutes: 1440
+        steps:
+          - task: ManualValidation@0
+            inputs:
+              notifyUsers: '{{APPROVER_EMAIL}}'
+              instructions: 'Aprobar deploy a PROD del build $(Build.BuildNumber).'
+              onTimeout: 'reject'
+      - job: DeployToProd
+        dependsOn: WaitForApprovalProd
+        condition: succeeded()
+        pool:
+          name: BUILDERS
+          demands:
+            - DeployTarget -equals {{DEPLOY_DEMAND_PRO}}    # R1/R25 (app=APPNODE01/02, svc=STORM01[/02 off])
+        timeoutInMinutes: 30
+        steps:
+          - checkout: none
+          - template: steps/security-verdict-gate.yml        # R22 (PROD = BLOCK)
+            parameters:
+              mode: block
+          - template: steps/download-artifact-rest.yml
+          - template: steps/backup-pre-deploy.yml
+          - task: IISWebAppDeploymentOnMachineGroup@0
+            displayName: 'Deploy IIS (PROD)'
+            inputs:
+              WebSiteName: 'Default Web Site'
+              VirtualApplication: '$(iisVirtualApp)'
+              Package: '$(MsDeployPackage)\*.zip'
+              RemoveAdditionalFilesFlag: true
+              TakeAppOfflineFlag: true
+              AdditionalArguments: '-enableRule:DoNotDeleteRule'
+          - template: steps/smoke-besteffort.yml             # R11 (best-effort, app sin /health/*; NO throw)
+            parameters:
+              appUrl: '{{PROD_URL}}'
+          - template: steps/rollback-on-fail.yml

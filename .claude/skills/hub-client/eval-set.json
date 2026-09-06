@@ -1,0 +1,85 @@
+{
+  "skill": "hub-client",
+  "version": "1.0.0",
+  "_origen": "FASE 5 remediacion auditoria 2026-07-15: era la UNICA skill sin eval-set (cobertura 19/20)",
+  "queries": [
+    {
+      "query": "Busca en el hub las decisiones ADR de otros proyectos sobre autenticacion",
+      "should_trigger": true,
+      "language": "es",
+      "note": "tool search_decisions - caso de uso nuclear"
+    },
+    {
+      "query": "Que lecciones aprendidas hay en el hub sobre TLS en agentes de build",
+      "should_trigger": true,
+      "language": "es",
+      "note": "tool search_lessons cross-proyecto"
+    },
+    {
+      "query": "Como configuro el .mcp.json para conectarme al Hub Ovillo desde mi proyecto",
+      "should_trigger": true,
+      "language": "es",
+      "note": "configuracion scope project"
+    },
+    {
+      "query": "El hub me devuelve 401 al invocar register_decision, como lo arreglo",
+      "should_trigger": true,
+      "language": "es",
+      "note": "troubleshooting conexion + auth"
+    },
+    {
+      "query": "Is the ecosystem hub online? Run a ping and show me the registered projects",
+      "should_trigger": true,
+      "language": "en",
+      "note": "tools ping + list_projects EN"
+    },
+    {
+      "query": "Registra este DOC de agente en el hub con register_agentdoc",
+      "should_trigger": true,
+      "language": "es",
+      "note": "tool register_agentdoc (ADR-050)"
+    },
+    {
+      "query": "Dame el resumen semanal de estado de los proyectos del hub",
+      "should_trigger": true,
+      "language": "es",
+      "note": "prompt weekly-status-report"
+    },
+    {
+      "query": "Las URLs REST legacy del hub me dan error, migra la configuracion al endpoint MCP",
+      "should_trigger": true,
+      "language": "es",
+      "note": "migracion /mcp -> /hub (ADR-039)"
+    },
+    {
+      "query": "Sincroniza las decisiones y lecciones de mi _hilo con el hub",
+      "should_trigger": false,
+      "language": "es",
+      "note": "Adversarial - eso es el comando /mcp-sync, no la skill"
+    },
+    {
+      "query": "Registra mi proyecto por primera vez en el hub y dame la api key",
+      "should_trigger": false,
+      "language": "es",
+      "note": "Adversarial - registro inicial = /mcp-register / arranque.ps1 silent-register"
+    },
+    {
+      "query": "Quiero activar la telemetria de agents con opt-in",
+      "should_trigger": false,
+      "language": "es",
+      "note": "Adversarial - opt-in per-dev = /mcp-register (privacy notice), no la skill"
+    },
+    {
+      "query": "Analiza la arquitectura de mi proyecto y genera el informe",
+      "should_trigger": false,
+      "language": "es",
+      "note": "Adversarial - eso es /analisis-arquitectura"
+    }
+  ],
+  "overlap_notes": {
+    "/mcp-sync (comando)": "El comando SUBE contenido Hilo local al hub (batch). La skill CONSULTA/INVOCA el hub via protocolo MCP (tools/resources/prompts) y resuelve config/troubleshooting.",
+    "/mcp-register (comando)": "Registro inicial + opt-in telemetria son del comando (privacy notice per-dev, ADR-037/038). La skill asume proyecto ya registrado.",
+    "cicd-architect": "cicd-architect = disenar/editar YAML de pipelines. hub-client = registrar/consultar pipelines EN EL HUB (register_pipeline, get_cicd_status).",
+    "docs-agente-sync": "docs-agente-sync = generar/sincronizar los DOC del proyecto (productor). hub-client = la tool register_agentdoc y las stats del hub (transporte/consulta)."
+  }
+}

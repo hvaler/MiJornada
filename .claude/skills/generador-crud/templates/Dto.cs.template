@@ -1,0 +1,199 @@
+// ============================================================================
+// TEMPLATE: Dto.cs - Data Transfer Objects
+// Skill: generador-crud
+// Versión: 2.8.0
+// ============================================================================
+// USO: Reemplazar {{Entity}}, {{Namespace}}, {{Propiedades}}
+// ============================================================================
+
+namespace {{Namespace}}.Application.Features.{{Entities}}.Dtos;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DTO DE RESPUESTA (para GET)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// DTO completo de {{Entity}} para respuestas
+/// </summary>
+public record {{Entity}}Dto
+{
+    public int Id { get; init; }
+
+    {{PropiedadesDto}}
+
+    // Auditoría
+    public DateTime CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+    public DateTime? ModifiedAt { get; init; }
+    public string? ModifiedBy { get; init; }
+}
+
+/// <summary>
+/// DTO resumido de {{Entity}} para listados
+/// </summary>
+public record {{Entity}}ListDto
+{
+    public int Id { get; init; }
+
+    {{PropiedadesListDto}}
+}
+
+/// <summary>
+/// DTO para select/dropdown
+/// </summary>
+public record {{Entity}}SelectDto
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DTO DE REQUEST (para POST/PUT)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Request para crear {{Entity}}
+/// </summary>
+public record Create{{Entity}}Request
+{
+    {{PropiedadesCreateRequest}}
+}
+
+/// <summary>
+/// Request para actualizar {{Entity}}
+/// </summary>
+public record Update{{Entity}}Request
+{
+    {{PropiedadesUpdateRequest}}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DTO PAGINADO
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// <summary>
+/// Request de paginación y filtros
+/// </summary>
+public record {{Entity}}FilterRequest
+{
+    public int Page { get; init; } = 1;
+    public int Size { get; init; } = 10;
+
+    // Filtros específicos
+    {{PropiedadesFiltro}}
+
+    // Ordenación
+    public string? OrderBy { get; init; }
+    public bool OrderDescending { get; init; } = true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAPPING PROFILE
+// ═══════════════════════════════════════════════════════════════════════════
+
+using AutoMapper;
+using {{Namespace}}.Domain.Entities;
+
+public class {{Entity}}MappingProfile : Profile
+{
+    public {{Entity}}MappingProfile()
+    {
+        // Entity → DTO
+        CreateMap<{{Entity}}, {{Entity}}Dto>();
+        CreateMap<{{Entity}}, {{Entity}}ListDto>();
+        CreateMap<{{Entity}}, {{Entity}}SelectDto>();
+
+        // Request → Command (si se usa MediatR)
+        // CreateMap<Create{{Entity}}Request, Create{{Entity}}Command>();
+        // CreateMap<Update{{Entity}}Request, Update{{Entity}}Command>();
+    }
+}
+
+// ============================================================================
+// EJEMPLO GENERADO - ScholarshipDto
+// ============================================================================
+/*
+// DTO completo
+public record ScholarshipDto
+{
+    public int Id { get; init; }
+    public string Code { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public decimal Amount { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public DateTime StartDate { get; init; }
+    public DateTime EndDate { get; init; }
+    public int TotalApplications { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+    public DateTime? ModifiedAt { get; init; }
+    public string? ModifiedBy { get; init; }
+}
+
+// DTO para listados
+public record ScholarshipListDto
+{
+    public int Id { get; init; }
+    public string Code { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public decimal Amount { get; init; }
+    public string Status { get; init; } = string.Empty;
+    public DateTime EndDate { get; init; }
+}
+
+// DTO para selects
+public record ScholarshipSelectDto
+{
+    public int Id { get; init; }
+    public string Name { get; init; } = string.Empty;
+}
+
+// Request crear
+public record CreateScholarshipRequest
+{
+    public required string Code { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public decimal Amount { get; init; }
+    public DateTime StartDate { get; init; }
+    public DateTime EndDate { get; init; }
+}
+
+// Request actualizar
+public record UpdateScholarshipRequest
+{
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public decimal Amount { get; init; }
+}
+
+// Request filtros
+public record ScholarshipFilterRequest
+{
+    public int Page { get; init; } = 1;
+    public int Size { get; init; } = 10;
+    public string? Status { get; init; }
+    public decimal? AmountMinimo { get; init; }
+    public decimal? AmountMaximo { get; init; }
+    public bool? SoloActive { get; init; }
+    public string? OrderBy { get; init; }
+    public bool OrderDescending { get; init; } = true;
+}
+
+// Mapping
+public class ScholarshipMappingProfile : Profile
+{
+    public ScholarshipMappingProfile()
+    {
+        CreateMap<Scholarship, ScholarshipDto>()
+            .ForMember(d => d.Status, opt => opt.MapFrom(s => s.Status.ToString()))
+            .ForMember(d => d.TotalApplications, opt => opt.MapFrom(s => s.Applications.Count));
+
+        CreateMap<Scholarship, ScholarshipListDto>()
+            .ForMember(d => d.Status, opt => opt.MapFrom(s => s.Status.ToString()));
+
+        CreateMap<Scholarship, ScholarshipSelectDto>();
+    }
+}
+*/

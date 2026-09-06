@@ -1,0 +1,311 @@
+using System.Drawing.Drawing2D;
+
+namespace MiJornada;
+
+public class MainForm : Form
+{
+    private static readonly Color Morado = Color.FromArgb(91, 95, 199);
+    private static readonly Color MoradoOscuro = Color.FromArgb(75, 79, 179);
+    private static readonly Color Ambar = Color.FromArgb(193, 156, 0);
+    private static readonly Color Pista = Color.FromArgb(237, 235, 233);
+    private static readonly Color Tinta = Color.FromArgb(32, 31, 30);
+    private static readonly Color Gris = Color.FromArgb(96, 94, 92);
+    private static readonly Color Rojo = Color.FromArgb(164, 38, 44);
+
+    private readonly Estado _estado = Estado.Cargar();
+    private readonly Lazy<PresenciaService> _presenciaLazy = new(() => new PresenciaService());
+    private PresenciaService Presencia => _presenciaLazy.Value;
+
+    private readonly Panel _anillo = new();
+    private readonly Label _lblTiempo = new();
+    private readonly Label _lblRotulo = new();
+    private readonly Button _btnPrincipal = new();
+    private readonly LinkLabel _lnkCancelar = new();
+    private readonly System.Windows.Forms.Timer _reloj = new();
+    private readonly NotifyIcon _tray = new();
+
+    private bool _cerrandoDeVerdad;
+    private bool _finalizando;
+
+    public MainForm()
+    {
+        Text = "Mi jornada";
+        ClientSize = new Size(340, 430);
+        FormBorderStyle = FormBorderStyle.FixedSingle;
+        MaximizeBox = false;
+        StartPosition = FormStartPosition.CenterScreen;
+        BackColor = Color.White;
+        Font = new Font("Segoe UI", 9f);
+
+        // ------------------------------------------------------------- anillo
+        _anillo.SetBounds(50, 30, 240, 240);
+        _anillo.BackColor = Color.Transparent;
+        _anillo.Paint += DibujarAnillo;
+        Controls.Add(_anillo);
+
+        _lblTiempo.SetBounds(0, 95, 240, 50);
+        _lblTiempo.TextAlign = ContentAlignment.MiddleCenter;
+        _lblTiempo.Font = new Font("Segoe UI", 26f, FontStyle.Regular);
+        _lblTiempo.ForeColor = Tinta;
+        _lblTiempo.BackColor = Color.Transparent;
+        _lblTiempo.Parent = _anillo;
+
+        _lblRotulo.SetBounds(50, 280, 240, 24);
+        _lblRotulo.TextAlign = ContentAlignment.MiddleCenter;
+        _lblRotulo.ForeColor = Gris;
+        Controls.Add(_lblRotulo);
+
+        // ------------------------------------------------------------ botones
+        _btnPrincipal.SetBounds(50, 320, 240, 40);
+        _btnPrincipal.FlatStyle = FlatStyle.Flat;
+        _btnPrincipal.FlatAppearance.BorderSize = 0;
+        _btnPrincipal.Font = new Font("Segoe UI", 10f);
+        _btnPrincipal.Cursor = Cursors.Hand;
+        _btnPrincipal.Click += BotonPrincipal_Click;
+        Controls.Add(_btnPrincipal);
+
+        _lnkCancelar.SetBounds(50, 372, 240, 24);
+        _lnkCancelar.TextAlign = ContentAlignment.MiddleCenter;
+        _lnkCancelar.Text = "Cancelar jornada";
+        _lnkCancelar.LinkColor = Gris;
+        _lnkCancelar.ActiveLinkColor = Rojo;
+        _lnkCancelar.LinkBehavior = LinkBehavior.HoverUnderline;
+        _lnkCancelar.Click += Cancelar_Click;
+        Controls.Add(_lnkCancelar);
+
+        // -------------------------------------------------------------- bandeja
+        _tray.Icon = SystemIcons.Application;
+        _tray.Text = "Mi jornada";
+        _tray.DoubleClick += (_, _) => Restaurar();
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("Abrir", null, (_, _) => Restaurar());
+        menu.Items.Add("Salir", null, (_, _) => { _cerrandoDeVerdad = true; Close(); });
+        _tray.ContextMenuStrip = menu;
+
+        // ---------------------------------------------------------------- reloj
+        _reloj.Interval = 1000;
+        _reloj.Tick += Reloj_Tick;
+        _reloj.Start();
+
+        // Si la jornada venció con la aplicación cerrada, se descarta en silencio.
+        if (_estado.Situacion == EstadoJornada.Activa && _estado.Restante == TimeSpan.Zero)
+            _estado.Limpiar();
+
+        Refrescar();
+    }
+
+    // ------------------------------------------------------------------ pintado
+
+    private void DibujarAnillo(object? sender, PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        var rect = new Rectangle(12, 12, 216, 216);
+
+        using (var lapiz = new Pen(Pista, 16))
+            g.DrawEllipse(lapiz, rect);
+
+        if (_estado.Situacion == EstadoJornada.SinFichar) return;
+
+        var color = _estado.Situacion == EstadoJornada.Pausada ? Ambar : Morado;
+        var barrido = (float)(360 * _estado.Fraccion);
+        if (barrido <= 0.5f) return;
+
+        using var pluma = new Pen(color, 16)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round
+        };
+        g.DrawArc(pluma, rect, -90, barrido);
+    }
+
+    private void Refrescar()
+    {
+        _anillo.Invalidate();
+
+        switch (_estado.Situacion)
+        {
+            case EstadoJornada.Activa:
+                _lblTiempo.Text = _estado.Restante.ToString(@"hh\:mm\:ss");
+                _lblTiempo.ForeColor = Tinta;
+                _lblRotulo.Text = $"Termina a las {_estado.Fin:HH:mm}";
+                EstiloSecundario(_btnPrincipal, "Pausar");
+                _lnkCancelar.Visible = true;
+                break;
+
+            case EstadoJornada.Pausada:
+                _lblTiempo.Text = _estado.Restante.ToString(@"hh\:mm\:ss");
+                _lblTiempo.ForeColor = Gris;
+                _lblRotulo.Text = $"En pausa desde las {_estado.PausaDesde:HH:mm}";
+                EstiloPrimario(_btnPrincipal, "Reanudar");
+                _lnkCancelar.Visible = true;
+                break;
+
+            default:
+                _lblTiempo.Text = "--:--:--";
+                _lblTiempo.ForeColor = Pista;
+                _lblRotulo.Text = "Sin fichar";
+                EstiloPrimario(_btnPrincipal, "Iniciar jornada");
+                _lnkCancelar.Visible = false;
+                break;
+        }
+
+        _tray.Text = _lblRotulo.Text.Length > 60 ? "Mi jornada" : _lblRotulo.Text;
+    }
+
+    private static void EstiloPrimario(Button b, string texto)
+    {
+        b.Text = texto;
+        b.BackColor = Morado;
+        b.ForeColor = Color.White;
+        b.FlatAppearance.MouseOverBackColor = MoradoOscuro;
+        b.FlatAppearance.BorderSize = 0;
+    }
+
+    private static void EstiloSecundario(Button b, string texto)
+    {
+        b.Text = texto;
+        b.BackColor = Color.White;
+        b.ForeColor = Tinta;
+        b.FlatAppearance.MouseOverBackColor = Color.FromArgb(243, 242, 241);
+        b.FlatAppearance.BorderSize = 1;
+        b.FlatAppearance.BorderColor = Color.FromArgb(200, 198, 196);
+    }
+
+    // ------------------------------------------------------------------ acciones
+
+    private async void BotonPrincipal_Click(object? sender, EventArgs e)
+    {
+        switch (_estado.Situacion)
+        {
+            case EstadoJornada.SinFichar: await IniciarAsync(); break;
+            case EstadoJornada.Activa: await PausarAsync(); break;
+            case EstadoJornada.Pausada: await ReanudarAsync(); break;
+        }
+    }
+
+    private async Task IniciarAsync()
+    {
+        if (!await CambiarPresenciaAsync("Available", "Available")) return;
+
+        _estado.Situacion = EstadoJornada.Activa;
+        _estado.Fin = DateTime.Now + Config.Jornada;
+        _estado.PausaDesde = null;
+        _estado.Guardar();
+        Refrescar();
+    }
+
+    private async Task PausarAsync()
+    {
+        _estado.Situacion = EstadoJornada.Pausada;
+        _estado.PausaDesde = DateTime.Now;
+        _estado.Guardar();
+        Refrescar();
+        await CambiarPresenciaAsync("Away", "Away");
+    }
+
+    private async Task ReanudarAsync()
+    {
+        if (_estado.PausaDesde is not null)
+            _estado.Fin = _estado.Fin!.Value + (DateTime.Now - _estado.PausaDesde.Value);
+
+        _estado.Situacion = EstadoJornada.Activa;
+        _estado.PausaDesde = null;
+        _estado.Guardar();
+        Refrescar();
+        await CambiarPresenciaAsync("Available", "Available");
+    }
+
+    private async void Cancelar_Click(object? sender, EventArgs e)
+    {
+        var r = MessageBox.Show(this, "¿Seguro que quieres cancelar la jornada?", "Mi jornada",
+            MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+        if (r != DialogResult.Yes) return;
+
+        _estado.Limpiar();
+        Refrescar();
+        await CambiarPresenciaAsync("Offline", "OffWork");
+    }
+
+    private async void Reloj_Tick(object? sender, EventArgs e)
+    {
+        if (_estado.Situacion == EstadoJornada.Activa && _estado.Restante == TimeSpan.Zero && !_finalizando)
+        {
+            _finalizando = true;
+            _estado.Limpiar();
+            Refrescar();
+            await CambiarPresenciaAsync("Offline", "OffWork");
+            _tray.Visible = true;
+            _tray.ShowBalloonTip(5000, "Jornada finalizada",
+                "Tu estado ha cambiado a Fuera del trabajo.", ToolTipIcon.Info);
+            _finalizando = false;
+            return;
+        }
+
+        Refrescar();
+    }
+
+    private async Task<bool> CambiarPresenciaAsync(string disponibilidad, string actividad)
+    {
+        Cursor = Cursors.WaitCursor;
+        _btnPrincipal.Enabled = false;
+        try
+        {
+            await Presencia.EstablecerAsync(disponibilidad, actividad, MostrarCodigoDispositivo);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo cambiar la presencia",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+        finally
+        {
+            Cursor = Cursors.Default;
+            _btnPrincipal.Enabled = true;
+        }
+    }
+
+    private void MostrarCodigoDispositivo(string codigo, string url)
+    {
+        Invoke(() =>
+        {
+            Clipboard.SetText(codigo);
+            PresenciaService.AbrirNavegador(url);
+            MessageBox.Show(this,
+                $"Pega este código en la ventana del navegador que se acaba de abrir:\n\n{codigo}\n\n" +
+                "Ya está copiado en el portapapeles. Cuando termines, vuelve aquí.",
+                "Iniciar sesión", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        });
+    }
+
+    // -------------------------------------------------------------------- cierre
+
+    private void Restaurar()
+    {
+        Show();
+        WindowState = FormWindowState.Normal;
+        Activate();
+        _tray.Visible = false;
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        // Con una jornada en marcha, cerrar la ventana la deja corriendo en la
+        // bandeja: si el proceso muere, nadie pondrá el Fuera del trabajo al final.
+        if (!_cerrandoDeVerdad && _estado.Situacion != EstadoJornada.SinFichar)
+        {
+            e.Cancel = true;
+            Hide();
+            _tray.Visible = true;
+            _tray.ShowBalloonTip(3000, "Mi jornada",
+                "Sigue contando aquí abajo. Doble clic para volver.", ToolTipIcon.Info);
+            return;
+        }
+
+        _tray.Visible = false;
+        base.OnFormClosing(e);
+    }
+}

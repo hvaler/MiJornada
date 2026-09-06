@@ -1,0 +1,123 @@
+{
+  "_comentario": "Configuracion centralizada para integracion-vs.ps1 - Estructura de Solution Folders",
+  "version": "3.18.1",
+
+  "solutionFolders": {
+    "_comentario": "Estructura de carpetas virtuales en Visual Studio",
+    "contenedor": "_Loom",
+    "contenedor_descripcion": "Carpeta contenedora principal para toda la documentacion Ovillo",
+
+    "estructura": [
+      {
+        "nombre": "Raiz",
+        "descripcion": "Archivos principales del proyecto",
+        "archivos": ["CLAUDE.md", "README.md", "INICIO_RAPIDO.md"],
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "_hilo",
+        "descripcion": "Hilo - Memoria del proyecto",
+        "recursivo": true,
+        "incluir_subcarpetas": ["specs", "reuniones", "guias-uso"],
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "_patron",
+        "descripcion": "Patrón - Base de conocimiento",
+        "recursivo": true,
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "00_Gestion",
+        "descripcion": "Gestion del proyecto",
+        "recursivo": true,
+        "incluir_subcarpetas": ["Requerimientos", "Reuniones"],
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "01_Diseno",
+        "descripcion": "Arquitectura y diagramas",
+        "recursivo": true,
+        "incluir_subcarpetas": ["Arquitectura"],
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "02_Entorno",
+        "descripcion": "Configuracion de entorno",
+        "recursivo": true,
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "04_Pruebas",
+        "descripcion": "Documentacion de pruebas",
+        "recursivo": true,
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "05_CICD",
+        "descripcion": "CI/CD y pipelines",
+        "recursivo": true,
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "06_Documentacion",
+        "descripcion": "Documentacion adicional",
+        "recursivo": true,
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "07_UAP",
+        "descripcion": "UAP y manuales",
+        "recursivo": true,
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "Documentos_Base",
+        "descripcion": "Estandares del ecosistema",
+        "recursivo": true,
+        "incluir_subcarpetas": [
+          "01_Estructura_Tecnica",
+          "02_Diseno_Usabilidad",
+          "03_Consideraciones_Comunes",
+          "04_Plantillas_Documentacion",
+          "05_Plantillas_SQL"
+        ],
+        "prefijo_ruta": ".."
+      },
+      {
+        "nombre": "skills",
+        "descripcion": "Skills de Claude (si existen)",
+        "condicional": true,
+        "condicion": "existe .claude/skills",
+        "origen": ".claude/skills",
+        "recursivo": true,
+        "prefijo_ruta": ".."
+      }
+    ]
+  },
+
+  "extensiones_incluidas": {
+    "_comentario": "Extensiones de archivo a incluir en Solution Folders",
+    "documentacion": [".md", ".txt", ".json", ".xml", ".html"],
+    "configuracion": [".yml", ".yaml", ".env.example", ".editorconfig"],
+    "scripts": [".ps1", ".sh", ".bat", ".cmd"]
+  },
+
+  "exclusiones": {
+    "_comentario": "Patrones a excluir",
+    "carpetas": ["node_modules", "bin", "obj", ".git", ".vs"],
+    "archivos": ["*.bak", "*.tmp", "*.log", "Thumbs.db", ".DS_Store"]
+  },
+
+  "formatos_solucion": {
+    "_comentario": "Formatos de archivo de solucion soportados",
+    "sln": {
+      "descripcion": "Formato texto tradicional",
+      "funcion": "Process-Solution"
+    },
+    "slnx": {
+      "descripcion": "Formato XML (VS 2022+)",
+      "funcion": "Process-SolutionSlnx"
+    }
+  }
+}

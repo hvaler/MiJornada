@@ -1,0 +1,85 @@
+#requires -Version 5.1
+<#
+.SYNOPSIS
+  Registra la definicion de build (YAML) de {{PIPELINE_NAME}} en TFS 2020 on-premise,
+  asigna la cola BUILDERS por defecto (TEC-007) e intenta autorizar la canalizacion al pool (TEC-003).
+.DESCRIPTION
+  TEMPLATE materializado por /cicd-init (sustituir placeholders {{...}}). Ejecutar DESDE una maquina
+  con acceso a devops.example.org y credenciales Windows del proyecto (el sandbox de /cicd-init no tiene
+  acceso a la API REST de la coleccion). Modelo on-demand (R20): DeployEnv settable at queue time.
+  Validado en piloto MyCompany.WebCorporativa (netfx). Reutilizable por CUALQUIER stack (.NET/Vue/netfx).
+.NOTES
+  R2 (TLS 1.2+), R17 (retention rules), R20 (DeployEnv), TEC-007 (queue!=NULL), TEC-003 (auth canalizacion).
+#>
+[CmdletBinding()]
+param(
+  [string] $TfsCollectionUrl = 'https://devops.example.org/{{COLECCION}}',
+  [string] $Project          = '{{PROYECTO_TFS}}',
+  [string] $RepoName         = '{{REPO_NAME}}',
+  [string] $PipelineName     = '{{PIPELINE_NAME}}',
+  [string] $Branch           = '{{BRANCH}}',
+  [string] $PoolName         = 'BUILDERS'
+)
+
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13 }
+catch { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 }
+
+$base = "$TfsCollectionUrl/$Project/_apis"
+
+Write-Host "1) Descubriendo repositoryId, queueId..."
+$repos = Invoke-RestMethod -Uri "$base/git/repositories?api-version=5.0" -UseDefaultCredentials
+$repoId = ($repos.value | Where-Object { $_.name -eq $RepoName }).id
+if (-not $repoId) { throw "Repo '$RepoName' no encontrado en $Project." }
+
+$queues = Invoke-RestMethod -Uri "$base/distributedtask/queues?api-version=5.0-preview" -UseDefaultCredentials
+$queue  = $queues.value | Where-Object { $_.pool.name -eq $PoolName }
+if (-not $queue) { throw "Cola del pool '$PoolName' no visible al proyecto (pedir a Sistemas: autorizar pool al grupo)." }
+$queueId = $queue.id
+$poolId  = $queue.pool.id
+Write-Host "   repoId=$repoId queueId=$queueId poolId=$poolId"
+
+Write-Host "2) POST build definition..."
+$def = @{
+  name = $PipelineName; path = '\'; type = 'build'
+  process = @{ yamlFilename = 'azure-pipelines.yml'; type = 2 }
+  queue = @{ id = $queueId }                                   # TEC-007: cola por defecto != NULL
+  repository = @{ id = $repoId; name = $RepoName; type = 'TfsGit'; defaultBranch = "refs/heads/$Branch" }
+  variables = @{ DeployEnv = @{ value = ''; allowOverride = $true } }  # R20: settable at queue time
+  triggers = @(@{
+    branchFilters = @(); pathFilters = @(); settingsSourceType = 2
+    batchChanges = $false; maxConcurrentBuildsPerBranch = 1; triggerType = 'continuousIntegration'
+  })
+  retentionRules = @(
+    @{ branches = @("+refs/heads/$Branch"); daysToKeep = 30; minimumToKeep = 5; artifacts = @('drop') },
+    @{ branches = @('+refs/heads/*', "-refs/heads/$Branch"); daysToKeep = 7; minimumToKeep = 1; artifacts = @('drop') }
+  )
+}
+$created = Invoke-RestMethod -Uri "$base/build/definitions?api-version=5.0" -Method Post `
+  -Body ($def | ConvertTo-Json -Depth 30) -ContentType 'application/json' -UseDefaultCredentials
+$defId = $created.id
+Write-Host "   Definicion creada id=$defId"
+Write-Host "   URL: $TfsCollectionUrl/$Project/_build?definitionId=$defId"
+
+Write-Host "3) Verificar cola por defecto (TEC-007)..."
+$d = Invoke-RestMethod -Uri "$base/build/definitions/$defId`?api-version=5.0" -UseDefaultCredentials
+if (-not ($d.PSObject.Properties.Name -contains 'queue') -or -not $d.queue) {
+  $q = [pscustomobject]@{ id = $queueId; name = $PoolName; pool = [pscustomobject]@{ id = $poolId; name = $PoolName } }
+  $d | Add-Member -NotePropertyName queue -NotePropertyValue $q -Force
+  Invoke-RestMethod -Method Put -Uri "$base/build/definitions/$defId`?api-version=5.0" `
+    -Body ($d | ConvertTo-Json -Depth 40) -ContentType 'application/json' -UseDefaultCredentials | Out-Null
+  Write-Host "   Cola BUILDERS asignada a la definicion (PUT)."
+} else { Write-Host "   Cola ya presente." }
+
+Write-Host "4) Intentar autorizar canalizacion -> pool (TEC-003, requiere pool admin)..."
+try {
+  $body = @{ pipelines = @(@{ id = $defId; authorized = $true }) } | ConvertTo-Json -Depth 5
+  Invoke-RestMethod -Method Patch -ContentType 'application/json' -UseDefaultCredentials `
+    -Uri "$base/pipelines/pipelinePermissions/queue/$queueId?api-version=5.1-preview.1" -Body $body | Out-Null
+  Write-Host "   OK: canalizacion autorizada al pool (eres pool admin). Build desbloqueado."
+} catch {
+  $code = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
+  Write-Host "   Autorizacion por API no permitida (HTTP $code) -> banner 'Permit' del build o Sistemas (grant access to all pipelines)."
+}
+
+Write-Host ""
+Write-Host "LISTO. Haz 'git push origin $Branch' para disparar el primer build (NO encolar manualmente)."

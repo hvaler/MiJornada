@@ -1,0 +1,315 @@
+{
+  "_schema": "Documentacion de campos, ejemplos y opciones extendidas: _hilo/ESTADO_PROYECTO.schema.md (NO se carga en contexto; consultar bajo demanda)",
+  "ecosistema": {
+    "nombre": "Ovillo",
+    "version": "1.1.0",
+    "componentes": {
+      "Ovillo": {
+        "descripcion": "Ecosistema completo (plantilla + comandos + skills + reglas)",
+        "carpeta": "/"
+      },
+      "Hilo": {
+        "descripcion": "Sistema de memoria del proyecto (estado, sesiones, lecciones)",
+        "carpeta": "_hilo/"
+      },
+      "Patrón": {
+        "descripcion": "Base de conocimiento (Documentos_Base, rules, patterns)",
+        "carpeta": "_patron/"
+      }
+    }
+  },
+  "proyecto": {
+    "nombre": "Mi jornada",
+    "descripcion": "Aplicacion de escritorio (.NET 8 WinForms) que controla la presencia de Teams desde un boton anclado en la barra de tareas, hablando directamente con Microsoft Graph. Sin Power Platform, sin flujos y sin licencias premium.",
+    "owner": "STIC",
+    "jefe_proyecto": "Hugo Carlos Valer Rojas",
+    "responsable_tecnico": "Hugo Carlos Valer Rojas",
+    "fecha_inicio": "2026-09-06",
+    "repositorio": "https://github.com/hvaler/MiJornada",
+    "lider_tecnico": "Hugo Carlos Valer Rojas"
+  },
+  "equipo": {
+    "_doc": "'usuario' = usuario Git. 'nombre' = displayName EXACTO de AD (System.AssignedTo en TFS on-prem). 'roles' = array (multi-rol). Ver schema.md#equipo",
+    "miembros": [
+      {
+        "usuario": "hvaler",
+        "nombre": "Hugo Carlos Valer Rojas",
+        "email": "hvaler@comillas.edu",
+        "roles": [
+          "jefe_proyecto",
+          "lider_tecnico",
+          "desarrollador"
+        ],
+        "git_author_name": null
+      }
+    ]
+  },
+  "configuracion": {
+    "nivelIntegracionGit": "medio",
+    "_niveles_disponibles": [
+      "basico",
+      "medio",
+      "alto"
+    ],
+    "convencionRamas": "feature/{codigo}-{descripcion}",
+    "prefijoCommit": "[{codigo}]",
+    "ramaBase": "main",
+    "branching": {
+      "_doc": "Configurado en /onboarding. Lo usan /commit, /git-sync, /liberar, /cicd-init (R21/R24). Ver schema.md#branching",
+      "estrategia": "github-flow-simplificado",
+      "_estrategias_disponibles": [
+        "github-flow",
+        "github-flow-simplificado",
+        "release-flow",
+        "trunk-based",
+        "oneflow",
+        "gitflow",
+        "developer-flow",
+        "developer-branch",
+        "gitlab-flow"
+      ],
+      "ramaBase": "main",
+      "ramaDevelop": null,
+      "mergeStrategy": "no-ff",
+      "_mergeStrategies": [
+        "squash",
+        "no-ff",
+        "rebase",
+        "merge"
+      ],
+      "releasesBranches": false,
+      "convencionRamas": "feature/{codigo}-{descripcion}",
+      "_convencionRamas_opciones": [
+        "feature/{codigo}-{descripcion}",
+        "yyyyMMdd-{tipo}-{codigo}-{descripcion}",
+        "yyyyMMdd-{tipo}/{codigo}-{descripcion}",
+        "custom"
+      ],
+      "pushFeatures": false,
+      "tiposTarea": null,
+      "branchPolicies": {
+        "reviewersMinimo": 0,
+        "buildValidation": false,
+        "linkedWorkItems": false,
+        "commentResolution": false
+      },
+      "flujoDespliegue": "Sin entornos: dotnet publish --self-contained + copiar el .exe + anclar a la barra de tareas"
+    }
+  },
+  "soluciones": {
+    "_doc": "Multi-solucion: auto-detectado por /onboarding e integracion-vs.ps1. Estructura de cada entrada en schema.md#soluciones",
+    "multiSolucion": false,
+    "solucionActiva": null,
+    "soluciones": []
+  },
+  "jira": {
+    "_doc": "Se auto-configura al detectar un ticket Jira. Ver schema.md#jira",
+    "habilitado": false,
+    "proyectoKey": null,
+    "url": null
+  },
+  "estado": {
+    "modo": "desarrollo",
+    "_modos_disponibles": [
+      "puesta_a_punto",
+      "desarrollo",
+      "mantenimiento",
+      "soporte_uap"
+    ],
+    "fase_actual": "desarrollo",
+    "_fases_disponibles": [
+      "onboarding",
+      "diseno",
+      "desarrollo",
+      "pruebas",
+      "despliegue",
+      "documentacion",
+      "produccion"
+    ],
+    "sprint_actual": null,
+    "version_actual": "0.0.0",
+    "ultima_actualizacion": "2026-09-06",
+    "actualizado_por": "Hugo Carlos Valer Rojas"
+  },
+  "acceso_bd": {
+    "_doc": "Conexion de Claude a BD de desarrollo con enmascaramiento dinamico. Ver schema.md#acceso_bd",
+    "habilitado": false,
+    "entorno": "desarrollo",
+    "connection_string_key": null,
+    "usuario_claude": null,
+    "enmascaramiento_dinamico": true,
+    "columnas_enmascaradas": [
+      "email",
+      "telefono",
+      "dni",
+      "direccion",
+      "nombre_completo",
+      "cuenta_bancaria"
+    ],
+    "tablas_restringidas": [],
+    "permisos": {
+      "select": true,
+      "insert": false,
+      "update": false,
+      "delete": false,
+      "execute_sp": false
+    }
+  },
+  "infraestructura": {
+    "_doc": "Topologia de despliegue (/onboarding Fase 5b). v3.15.0 ADR-048: routing por tipo+publico del entrypoint (R25). Ejemplos de entornos y pipelines[] (web/api/console) en schema.md#infraestructura",
+    "entornos": [],
+    "cicd": {
+      "plataforma": null,
+      "pipeline_existente": false,
+      "deployment_groups": false,
+      "pipelines": []
+    },
+    "aprobadores": {
+      "Pre": [],
+      "Pro": []
+    }
+  },
+  "criticidad": {
+    "nivel": "media",
+    "_niveles_disponibles": [
+      "alta",
+      "media",
+      "baja"
+    ],
+    "sla": null,
+    "horario_mantenimiento": null,
+    "dependencias_inter_proyecto": []
+  },
+  "calendario": {
+    "deadline": null,
+    "freeze_periods": [],
+    "release_cycle": "continuo",
+    "_release_cycle_opciones": [
+      "continuo",
+      "semanal",
+      "quincenal",
+      "mensual",
+      "por_sprint"
+    ]
+  },
+  "mcpSync": {
+    "_doc": "Sincronizacion con el Hub del ecosistema (opt-in; default de organizacion en ecosystem.config.json -> hub). SCOPE per-PROYECTO (commiteable); credenciales per-DEV en _hilo/.mcp-credentials.json (gitignored). Ver schema.md#mcpSync",
+    "_NO_anadir_telemetryOptIn_aqui": "ADR-038: telemetryOptIn es PER-DEV — vive SOLO en .mcp-credentials.json y mcp.ProyectoDevs. Anadirlo aqui permitiria a un dev cambiar el opt-in de todo el equipo. Usar /mcp-register.",
+    "habilitado": false,
+    "serverUrl": null,
+    "projectId": null,
+    "categorias": {
+      "decisiones": true,
+      "lecciones": true,
+      "nugets": true,
+      "deuda": true,
+      "evolutivos": true,
+      "equipo": true,
+      "feedbackEcosistema": true
+    },
+    "ultimaSync": null
+  },
+  "onboarding": {
+    "completado": true,
+    "fecha_inicio_onboarding": "2026-09-06",
+    "fecha_fin_onboarding": "2026-09-06",
+    "pasos_completados": {
+      "informacion_general": true,
+      "stack_tecnologico": true,
+      "estructura_codigo": true,
+      "base_datos": true,
+      "integraciones": true,
+      "infraestructura_despliegue": true,
+      "autenticacion": true,
+      "funcionalidades": true,
+      "dependencias": true,
+      "tests_existentes": false,
+      "documentacion_existente": true,
+      "equipo": true,
+      "problemas_conocidos": true
+    }
+  },
+  "desarrollo": {
+    "modulos_en_desarrollo": [
+      "Aplicacion completa (5 ficheros en 03_Desarrollo/, pendiente de la primera compilacion)"
+    ],
+    "funcionalidades_en_progreso": [],
+    "bloqueadores": [
+      "El proyecto NUNCA se ha compilado: no se ha ejecutado ni un dotnet build. Ver EV-001 y _hilo/DEUDA_TECNICA.md",
+      "Estado.cs tiene el ClientId de Entra ID sin rellenar (placeholder PON-AQUI-TU-CLIENT-ID). Sin el, la autenticacion no arranca"
+    ],
+    "proxima_entrega": null,
+    "notas_sprint": "Codigo escrito del tiron y traspasado desde tres documentos (06_Documentacion/CONTEXTO.md, 06_Documentacion/mi-jornada-traspaso.md, 03_Desarrollo/LEEME.md). El siguiente paso es compilar y corregir; CONTEXTO.md seccion 8 lista los seis fallos mas probables ordenados por probabilidad."
+  },
+  "evolutivoActivo": null,
+  "evolutivos": {
+    "_doc": "Estructura de cada evolutivo (codigo, titulo, estado, asignadoA, rama, prioridad, fechas, creadoPor, notas) en schema.md#evolutivos",
+    "pendientes": [
+      {
+        "codigo": "EV-001",
+        "titulo": "Primera compilacion y correccion de errores",
+        "estado": "pendiente",
+        "asignadoA": "hvaler",
+        "rama": null,
+        "prioridad": "alta",
+        "fechaCreacion": "2026-09-06",
+        "fechaInicio": null,
+        "fechaEstimada": null,
+        "fechaCompletado": null,
+        "creadoPor": "hvaler",
+        "notas": "El codigo nunca ha pasado por dotnet build. Sospechosos por orden de probabilidad (CONTEXTO.md seccion 8): 1) versiones de Microsoft.Identity.Client y su extension fijadas a 4.66.2, que puede no existir; 2) transparencia de Labels sobre el anillo en WinForms; 3) Clipboard.SetText con cadena vacia; 4) globo de notificacion con _tray.Visible=false; 5) parpadeo del anillo sin doble bufer; 6) async void en los manejadores. Incluye rellenar el ClientId de Entra ID en Estado.cs."
+      }
+    ],
+    "enProgreso": [],
+    "completados": []
+  },
+  "ultimaSesion": {
+    "_doc": "Se actualiza con /pausar y se lee con /continuar",
+    "fecha": "2026-09-06",
+    "evolutivoActivo": null,
+    "usuario": "hvaler",
+    "ramaActiva": "main",
+    "proximoPaso": "EV-001: ejecutar dotnet build en 03_Desarrollo/ y corregir lo que salga",
+    "resumenSesion": "Onboarding del proyecto al ecosistema Ovillo: volcado del contexto de los tres documentos de traspaso al sistema Hilo, creacion de ecosystem.config.json y puesta en marcha del repositorio Git con remoto en GitHub.",
+    "archivosModificados": [
+      "ecosystem.config.json",
+      "_hilo/ESTADO_PROYECTO.json",
+      "_hilo/CONTEXTO_TECNICO.md",
+      "_hilo/DEPENDENCIAS.md",
+      "_hilo/FUNCIONALIDADES.md",
+      "_hilo/DEUDA_TECNICA.md",
+      "_hilo/DECISIONES.md",
+      "_hilo/LECCIONES.md",
+      "_hilo/HISTORIAL_CAMBIOS.md",
+      "_hilo/SESION_ACTUAL.md",
+      "CLAUDE.md"
+    ],
+    "notas": "No se ha tocado el codigo de la aplicacion: el alcance acordado era solo onboarding."
+  },
+  "metricas": {
+    "cobertura_tests": null,
+    "ultimo_build": null,
+    "ultimo_deploy": null,
+    "incidencias_abiertas": 0,
+    "evolutivos_completados_mes": 0
+  },
+  "alertas": {
+    "_doc": "Claude muestra estas alertas al iniciar sesion",
+    "activas": [
+      "El proyecto NUNCA se ha compilado. Ejecutar dotnet build (EV-001) antes de cualquier cambio de codigo.",
+      "Estado.cs tiene el ClientId de Entra ID sin rellenar: la app no autentica hasta que se ponga el valor real."
+    ]
+  },
+  "historial_modos": [
+    {
+      "modo": "puesta_a_punto",
+      "fecha": "2026-09-06",
+      "motivo": "Incorporacion del proyecto al ecosistema Ovillo"
+    },
+    {
+      "modo": "desarrollo",
+      "fecha": "2026-09-06",
+      "motivo": "Onboarding completado. El codigo existe pero esta pendiente de la primera compilacion (EV-001)"
+    }
+  ]
+}

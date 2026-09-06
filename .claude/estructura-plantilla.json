@@ -1,0 +1,142 @@
+{
+  "_comentario": "Configuracion centralizada para arranque.ps1 - NO HARDCODEAR en el script",
+  "version": "3.18.1",
+
+  "directorios": {
+    "_comentario": "Carpetas a crear segun modo de instalacion",
+    "siempre": [
+      ".claude",
+      ".claude/commands",
+      ".claude/rules",
+      ".claude/skills",
+      ".claude/smoke-tests",
+      ".claude/smoke-tests/scripts",
+      "_hilo",
+      "_hilo/specs",
+      "_hilo/reuniones",
+      "_patron"
+    ],
+    "solo_instalacion": [
+      "00_Gestion",
+      "00_Gestion/Requerimientos",
+      "00_Gestion/Reuniones",
+      "01_Diseno",
+      "01_Diseno/Arquitectura",
+      "02_Entorno",
+      "03_Desarrollo",
+      "04_Pruebas",
+      "05_CICD",
+      "06_Documentacion",
+      "07_UAP",
+      "Documentos_Base",
+      "Documentos_Base/01_Estructura_Tecnica",
+      "Documentos_Base/02_Diseno_Usabilidad",
+      "Documentos_Base/03_Consideraciones_Comunes",
+      "Documentos_Base/04_Plantillas_Documentacion"
+    ]
+  },
+
+  "copiar": {
+    "_comentario": "Archivos a copiar segun politica de sobrescritura",
+
+    "sobrescribir_siempre": {
+      "_comentario": "Estos archivos SIEMPRE se actualizan (commands, rules, skills, base)",
+      ".claude/commands": {
+        "patron": "*.md",
+        "descripcion": "Comandos markdown"
+      },
+      ".claude/commands_scripts": {
+        "origen": ".claude/commands",
+        "patron": "*.ps1",
+        "excluir": ["arranque.ps1"],
+        "descripcion": "Scripts PowerShell excepto arranque"
+      },
+      ".claude/rules": {
+        "patron": "*.md",
+        "descripcion": "Reglas condicionales"
+      },
+      ".claude/skills": {
+        "recursivo": true,
+        "descripcion": "Skills completos con subcarpetas"
+      },
+      ".claude/smoke-tests": {
+        "recursivo": true,
+        "descripcion": "Smoke tests del consumidor (activacion + compilacion + convenciones). Plantilla mantenida por Ovillo — los proyectos personalizan los placeholders sin tocar la estructura base."
+      },
+      ".claude/CLAUDE_BASE.md": {
+        "archivo_unico": true,
+        "descripcion": "Estandares base del ecosistema"
+      },
+      ".claude/CLAUDE_BASE_EXTENDIDO.md": {
+        "archivo_unico": true,
+        "descripcion": "Detalle extendido de estandares (no importado; se consulta bajo demanda)"
+      }
+    },
+
+    "siempre_si_no_existe": {
+      "_comentario": "Estos archivos se copian SIEMPRE si no existen (install y update)",
+      "_patron": [
+        "PATRON.md",
+        "INDICE.json"
+      ]
+    },
+
+    "solo_si_no_existe": {
+      "_comentario": "Estos archivos solo se copian en instalacion nueva o si no existen",
+      "_hilo": [
+        "ESTADO_PROYECTO.json",
+        "HISTORIAL_CAMBIOS.md",
+        "FUNCIONALIDADES.md",
+        "DECISIONES.md",
+        "DEPENDENCIAS.md",
+        "README.md",
+        "DEUDA_TECNICA.md",
+        "SESION_ACTUAL.md",
+        "VERSION.json",
+        "HILO.md",
+        "CONTEXTO_TECNICO.md",
+        "LECCIONES.md",
+        "ESTADO_PROYECTO.schema.md"
+      ],
+      "_hilo/specs": [
+        "EJEMPLO_SPEC.md"
+      ],
+      "_hilo/reuniones": [
+        "PLANTILLA_REUNION.md"
+      ],
+      "raiz": [
+        "CLAUDE.md",
+        "README.md",
+        "INICIO_RAPIDO.md"
+      ]
+    },
+
+    "carpetas_completas": {
+      "_comentario": "Carpetas que se copian completas solo en instalacion",
+      "solo_instalacion": [
+        "00_Gestion",
+        "01_Diseno",
+        "02_Entorno",
+        "04_Pruebas",
+        "05_CICD",
+        "06_Documentacion",
+        "07_UAP",
+        "Documentos_Base"
+      ]
+    }
+  },
+
+  "archivos_especiales": {
+    "_comentario": "Archivos con tratamiento especial",
+    "CLAUDE.md": {
+      "ubicacion": "raiz",
+      "politica": "preservar_si_modificado",
+      "descripcion": "Archivo principal - no sobrescribir si usuario lo ha personalizado"
+    },
+    "ESTADO_PROYECTO.json": {
+      "ubicacion": "_hilo",
+      "politica": "preservar_siempre",
+      "descripcion": "Estado del proyecto - nunca sobrescribir"
+    }
+  }
+}

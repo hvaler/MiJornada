@@ -1,0 +1,245 @@
+// ============================================================================
+// TEMPLATE: Controller.cs - Controlador API REST
+// Skill: generador-crud
+// Versión: 2.8.0
+// ============================================================================
+// USO: Reemplazar {{Entity}}, {{Entities}}, {{Namespace}}
+// ============================================================================
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using {{Namespace}}.Application.Features.{{Entities}}.Commands;
+using {{Namespace}}.Application.Features.{{Entities}}.Queries;
+using {{Namespace}}.Application.Common.Models;
+
+namespace {{Namespace}}.Api.Controllers;
+
+/// <summary>
+/// API REST para gestión de {{Entities}}
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
+public class {{Entities}}Controller : ControllerBase
+{
+    private readonly IMediator _mediator;
+    private readonly ILogger<{{Entities}}Controller> _logger;
+
+    public {{Entities}}Controller(
+        IMediator mediator,
+        ILogger<{{Entities}}Controller> logger)
+    {
+        _mediator = mediator;
+        _logger = logger;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // GET - Consultas
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Obtiene listado paginado de {{Entities}}
+    /// </summary>
+    /// <param name="page">Número de página (1-based)</param>
+    /// <param name="size">Elementos por página</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>Lista paginada de {{Entities}}</returns>
+    [HttpGet]
+    [ProducesResponseType<PaginatedResult<{{Entity}}Dto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<{{Entity}}Dto>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int size = 10,
+        CancellationToken ct = default)
+    {
+        var query = new Get{{Entities}}Query(page, size);
+        var result = await _mediator.Send(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Obtiene un/a {{Entity}} por su ID
+    /// </summary>
+    /// <param name="id">ID del/de la {{Entity}}</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>{{Entity}} encontrado/a</returns>
+    [HttpGet("{id:int}")]
+    [ProducesResponseType<{{Entity}}Dto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<{{Entity}}Dto>> GetById(
+        int id,
+        CancellationToken ct = default)
+    {
+        var query = new Get{{Entity}}ByIdQuery(id);
+        var result = await _mediator.Send(query, ct);
+
+        if (result is null)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "{{Entity}} no encontrado/a",
+                Detail = $"No existe un/a {{Entity}} con ID {id}",
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+
+        return Ok(result);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // POST - Crear
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Crea un/a nuevo/a {{Entity}}
+    /// </summary>
+    /// <param name="request">Datos del/de la {{Entity}}</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>{{Entity}} creado/a</returns>
+    [HttpPost]
+    [Authorize(Roles = "Admin,Gestor")]
+    [ProducesResponseType<{{Entity}}Dto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<{{Entity}}Dto>> Create(
+        [FromBody] Create{{Entity}}Command request,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(request, ct);
+
+        _logger.LogInformation(
+            "{{Entity}} {Id} creado/a por {User}",
+            result.Id,
+            User.Identity?.Name);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = result.Id },
+            result);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PUT - Actualizar
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Actualiza un/a {{Entity}} existente
+    /// </summary>
+    /// <param name="id">ID del/de la {{Entity}}</param>
+    /// <param name="request">Datos actualizados</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>Sin contenido si éxito</returns>
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin,Gestor")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Update(
+        int id,
+        [FromBody] Update{{Entity}}Command request,
+        CancellationToken ct = default)
+    {
+        if (id != request.Id)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "ID no coincide",
+                Detail = "El ID de la URL no coincide con el ID del body",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        await _mediator.Send(request, ct);
+
+        _logger.LogInformation(
+            "{{Entity}} {Id} actualizado/a por {User}",
+            id,
+            User.Identity?.Name);
+
+        return NoContent();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DELETE - Eliminar
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Elimina un/a {{Entity}} (soft delete)
+    /// </summary>
+    /// <param name="id">ID del/de la {{Entity}}</param>
+    /// <param name="ct">Token de cancelación</param>
+    /// <returns>Sin contenido si éxito</returns>
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(
+        int id,
+        CancellationToken ct = default)
+    {
+        var command = new Delete{{Entity}}Command(id);
+        await _mediator.Send(command, ct);
+
+        _logger.LogInformation(
+            "{{Entity}} {Id} eliminado/a por {User}",
+            id,
+            User.Identity?.Name);
+
+        return NoContent();
+    }
+}
+
+// ============================================================================
+// EJEMPLO GENERADO - ScholarshipsController
+// ============================================================================
+/*
+[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
+public class ScholarshipsController : ControllerBase
+{
+    private readonly IMediator _mediator;
+    private readonly ILogger<ScholarshipsController> _logger;
+
+    public ScholarshipsController(IMediator mediator, ILogger<ScholarshipsController> logger)
+    {
+        _mediator = mediator;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    [ProducesResponseType<PaginatedResult<ScholarshipDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<ScholarshipDto>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int size = 10,
+        CancellationToken ct = default)
+    {
+        var query = new GetScholarshipsQuery(page, size);
+        var result = await _mediator.Send(query, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("{id:int}")]
+    [ProducesResponseType<ScholarshipDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ScholarshipDto>> GetById(int id, CancellationToken ct = default)
+    {
+        var query = new GetScholarshipByIdQuery(id);
+        var result = await _mediator.Send(query, ct);
+
+        if (result is null)
+            return NotFound();
+
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin,Gestor")]
+    [ProducesResponseType<ScholarshipDto>(StatusCodes.Status201Created)]
+    public async Task<ActionResult<ScholarshipDto>> Create(
+        [FromBody] CreateScholarshipCommand request,
+        CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(request, ct);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+}
+*/
