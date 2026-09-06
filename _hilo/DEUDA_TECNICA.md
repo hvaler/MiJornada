@@ -193,15 +193,31 @@ Lanza excepcion. El codigo de dispositivo no deberia venir vacio, pero conviene 
 
 ---
 
-### DT-007 — Parpadeo del anillo
+### DT-007 — Parpadeo del anillo — RESUELTA 2026-09-06
 
 **Fichero**: `03_Desarrollo/MainForm.cs`
 
-`Refrescar()` invalida el panel cada segundo sin doble bufer.
+`Refrescar()` invalidaba el panel cada segundo y el `Panel` no tenia doble bufer: borraba el fondo
+y **luego** pintaba, y ese hueco se veia.
 
-**Como se resuelve**: si parpadea, un `Panel` derivado con `DoubleBuffered = true`. El globo de
-notificacion tiene un riesgo parecido: no aparece si `_tray.Visible` es `false` en ese momento
-(se pone a `true` justo antes, pero merece comprobacion).
+**Confirmada midiendola**, no mirandola. Se localizo un pixel sobre el trazo del anillo y se
+muestreo a 60 Hz durante 6 s. Aparecieron 5 muestras del color de fondo (blanco `255,255,255` y
+gris de la pista `237,235,233`) en:
+
+```
+t =  218 ms · 1216 ms · 2216 ms · 3218 ms · 4219 ms
+     separadas 998, 1000, 1002 y 1001 ms
+```
+
+Esa periodicidad de un segundo clavado **es** la cadencia del reloj: no habia duda de que fuera el
+repintado. Un destello de ~16 ms por segundo, todas las horas de jornada.
+
+**Resuelta** con un `Panel` derivado (`MainForm.Lienzo`) con `DoubleBuffered = true`: se pinta
+fuera de pantalla y se vuelca de una vez, asi que no hay instante intermedio que ver. Repetida la
+misma medicion sobre el binario corregido: **0 muestras de fondo en 361**, frente a 5 de 360.
+
+> La nota original avisaba de un riesgo parecido en el globo de notificacion. Resulto ser un
+> problema distinto y peor (Windows los descarta con No molestar): ver TEC-016 y M16.
 
 ---
 

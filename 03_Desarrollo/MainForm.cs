@@ -31,7 +31,23 @@ public class MainForm : Form
     // repinta. Ninguna E/S de red puede colgar de la ruta que refresca la interfaz.
     private readonly System.Windows.Forms.Timer _sincronizador = new();
 
-    private readonly Panel _anillo = new();
+    /// <summary>
+    /// Panel con doble búfer para el anillo (DT-007).
+    ///
+    /// <para>Un <see cref="Panel"/> normal borra el fondo y <b>luego</b> pinta, y como
+    /// <c>Refrescar()</c> lo invalida cada segundo, ese hueco se ve. Medido muestreando un píxel
+    /// del trazo a 60 Hz: destellos del color de fondo a los 218, 1216, 2216, 3218 y 4219 ms
+    /// — separados 998, 1000, 1002 y 1001 ms, que es clavado la cadencia del reloj.</para>
+    ///
+    /// <para>Con doble búfer se pinta todo fuera de pantalla y se vuelca de una vez, así que no
+    /// hay instante intermedio que ver.</para>
+    /// </summary>
+    private sealed class Lienzo : Panel
+    {
+        public Lienzo() => DoubleBuffered = true;
+    }
+
+    private readonly Lienzo _anillo = new();
     private readonly Label _lblTiempo = new();
     private readonly Label _lblRotulo = new();
     private readonly Button _btnPrincipal = new();
