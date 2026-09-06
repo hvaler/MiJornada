@@ -229,6 +229,28 @@ public class GraphService
         await LlamarOLanzarAsync(HttpMethod.Post, ruta, cuerpo);
     }
 
+    /// <summary>
+    /// Quita la presencia preferida y devuelve el mando a Teams, que vuelve a calcularla sola
+    /// (Disponible si estás activo, Ausente si no...).
+    ///
+    /// <para><b>No es lo mismo que poner <c>Offline</c>/<c>OffWork</c>.</b> Establecer una
+    /// presencia la deja <b>fijada</b>: Teams no vuelve a tocarla, aunque estés teclando. Es lo
+    /// correcto al terminar la jornada —quieres que se te vea fuera del trabajo hasta mañana—
+    /// pero no al cancelar, donde lo que quieres es que la aplicación deje de opinar.</para>
+    /// </summary>
+    public async Task LimpiarPresenciaAsync()
+    {
+        var objectId = await ObtenerObjectIdAsync();
+
+        // Mismo motivo que en EstablecerPresenciaAsync: con /me/... da 404.
+        var ruta = $"users/{objectId}/presence/clearUserPreferredPresence";
+
+        // Graph exige cuerpo JSON aunque no lleve datos; sin él responde 400.
+        var cuerpo = new StringContent("{}", Encoding.UTF8, "application/json");
+
+        await LlamarOLanzarAsync(HttpMethod.Post, ruta, cuerpo);
+    }
+
     // ------------------------------------------------------------------ utilidades
 
     public static void AbrirNavegador(string url) =>

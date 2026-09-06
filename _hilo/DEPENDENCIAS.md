@@ -48,15 +48,20 @@ Content-Type: application/json
 { "availability": "Available", "activity": "Available" }
 ```
 
-- **Sin SDK**: se construye el `HttpRequestMessage` a mano en `PresenciaService.EstablecerAsync`.
-  Es una sola llamada; meter `Microsoft.Graph` entero por esto no compensa.
+- **Sin SDK**: se construye el `HttpRequestMessage` a mano en
+  `GraphService.EstablecerPresenciaAsync`. Meter `Microsoft.Graph` entero por esto no compensa.
 - **La ruta con `/me/` NO vale**: devuelve 404 con cuerpo vacio. Hay que usar el object ID
   explicito, que sale de `cuenta.HomeAccountId.ObjectId` (no esta escrito en el codigo, asi que
   la app funciona para cualquiera que la ejecute).
 - **Combinaciones validas** de `availability`/`activity`: `Available`/`Available`,
   `Busy`/`Busy`, `DoNotDisturb`/`DoNotDisturb`, `BeRightBack`/`BeRightBack`, `Away`/`Away`,
   `Offline`/`OffWork` (lo que Teams muestra como "Fuera del trabajo").
-- Para devolver el control al calculo automatico: `POST .../presence/clearUserPreferredPresence`.
+- **Para devolver el control al calculo automatico**:
+  `POST .../presence/clearUserPreferredPresence`, en `GraphService.LimpiarPresenciaAsync`. Lo usa
+  **cancelar la jornada**. Dos trampas verificadas: **exige cuerpo JSON** aunque no lleve datos
+  (sin `{}` responde 400 `Request_BadRequest`), y la ruta `/me/...` da 404 igual que la de
+  establecer. Sin esta llamada, una presencia fijada **se queda fijada**: Teams no vuelve a
+  calcularla por su cuenta.
 - **Requiere una sesion de presencia activa** (Teams abierto en algun dispositivo). Sin ella la
   llamada devuelve 200 y no cambia nada visible.
 
@@ -74,7 +79,7 @@ Que se rompe si tocas cada fichero:
 
 | Si modificas... | Revisa tambien | Por que |
 |---|---|---|
-| `PresenciaService.cs` | Autenticacion **y** Graph a la vez | El mismo fichero resuelve el token, el object ID y el POST. Un cambio en la cache de MSAL puede dejar sin object ID a `EstablecerAsync`, que lo saca de la cuenta autenticada |
+| `GraphService.cs` | Autenticacion **y** Graph a la vez | El mismo fichero resuelve el token, el object ID y las llamadas. Un cambio en la cache de MSAL puede dejar sin object ID a `EstablecerPresenciaAsync` y `LimpiarPresenciaAsync`, que lo sacan de la cuenta autenticada |
 | `Estado.cs` → `Config.Jornada` | `MainForm.DibujarAnillo`, `Estado.Fraccion` | La fraccion del anillo se calcula contra `Config.Jornada`. Cambiarla con una jornada abierta dibuja el anillo con una duracion distinta a la que se uso al fichar |
 | `Estado.cs` → persistencia | Compatibilidad con `estado.json` ya escritos | `Cargar()` traga cualquier fallo y empieza de cero, asi que un cambio de forma **pierde la jornada en curso en silencio** |
 | `Estado.Restante` / `PausaDesde` | Pausa, reanudacion y anillo | Es la unica fuente de verdad del tiempo. Durante la pausa la referencia es `PausaDesde`, no `DateTime.Now` |

@@ -217,6 +217,26 @@ panel con `DrawString`. Ver DT-004.
 No caduca al cerrar Teams. Si un dia se cierra la aplicacion sin finalizar la jornada, al dia
 siguiente se puede aparecer como Disponible antes de fichar.
 
+**Y no basta con poner otro estado para "soltarlo".** `setUserPreferredPresence` **fija** la
+presencia: Teams deja de calcularla por su cuenta, aunque estes teclando. La unica forma de
+devolverle el mando es `clearUserPreferredPresence`. Son dos operaciones con efectos distintos, y
+confundirlas es facil porque las dos "cambian el estado":
+
+| Quiero... | Llamada |
+|---|---|
+| Que se me vea asi hasta nueva orden (fichar, pausar, terminar) | `setUserPreferredPresence` |
+| Que Teams vuelva a decidir (cancelar) | `clearUserPreferredPresence` |
+
+Hasta la 0.10.0, **cancelar** fijaba `Offline`/`OffWork`, con lo que quedabas marcado como fuera
+del trabajo el resto del dia y **la aplicacion no tenia forma de deshacerlo**: hubo que llamar a
+`clearUserPreferredPresence` desde fuera para recuperar la presencia normal. Corregido en 0.10.0.
+
+**Como se comprueba la diferencia**, que no es evidente porque `GET /me/presence` devuelve lo
+mismo este fijada o calculada: pausar primero (fija `Away`/`Away`, un valor que Teams **nunca**
+calcularia solo estando activo) y cancelar despues. Si pasa a `Available`, se limpio; si sigue en
+`Away`, no. Comparar contra el estado esperado no sirve — hay que elegir un estado que solo pueda
+existir si esta fijado.
+
 **Fecha**: 2026-09-06
 
 ---

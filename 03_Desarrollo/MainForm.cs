@@ -551,13 +551,20 @@ public class MainForm : Form
     {
         try
         {
-            var r = MessageBox.Show(this, "¿Seguro que quieres cancelar la jornada?", "Mi jornada",
+            var r = MessageBox.Show(this,
+                "¿Seguro que quieres cancelar la jornada?" + Environment.NewLine + Environment.NewLine +
+                "Tu presencia volverá a la que calcula Teams.", "Mi jornada",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (r != DialogResult.Yes) return;
 
             _estado.Limpiar();
             Refrescar();
-            await CambiarPresenciaAsync("Offline", "OffWork");
+
+            // Se LIMPIA la presencia preferida, no se pone Offline/OffWork. Cancelar es dar la
+            // jornada por no ocurrida, así que la aplicación tiene que dejar de opinar y
+            // devolver el mando a Teams. Fijar "Fuera del trabajo" aquí te dejaba marcado como
+            // ausente el resto del día, sin forma de deshacerlo desde la aplicación.
+            await LimpiarPresenciaAsync();
             await PublicarAsync();
         }
         catch (Exception ex)
@@ -639,13 +646,27 @@ public class MainForm : Form
             "pasarás a Fuera del trabajo.", 8000);
     }
 
-    private async Task<bool> CambiarPresenciaAsync(string disponibilidad, string actividad)
+    private Task<bool> CambiarPresenciaAsync(string disponibilidad, string actividad) =>
+        ConPresenciaAsync(() => Graph.EstablecerPresenciaAsync(disponibilidad, actividad));
+
+    /// <summary>
+    /// Deja de fijar la presencia: Teams vuelve a calcularla sola. Es lo que corresponde al
+    /// cancelar, donde la jornada se da por no ocurrida.
+    /// </summary>
+    private Task<bool> LimpiarPresenciaAsync() =>
+        ConPresenciaAsync(Graph.LimpiarPresenciaAsync);
+
+    /// <summary>
+    /// Reloj de espera, botón deshabilitado y el error en un diálogo en vez de propagarlo. Lo
+    /// comparten todos los cambios de presencia para que se comporten igual.
+    /// </summary>
+    private async Task<bool> ConPresenciaAsync(Func<Task> operacion)
     {
         Cursor = Cursors.WaitCursor;
         _btnPrincipal.Enabled = false;
         try
         {
-            await Graph.EstablecerPresenciaAsync(disponibilidad, actividad);
+            await operacion();
             return true;
         }
         catch (Exception ex)

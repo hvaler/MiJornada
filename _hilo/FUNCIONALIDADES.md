@@ -34,7 +34,7 @@ Tres situaciones: `SinFichar`, `Activa`, `Pausada`.
 | **Iniciar jornada** | Presencia a `Available`/`Available`, se calcula y persiste la hora de fin (ahora + 7 h) |
 | **Pausar** | Congela el restante y pone la presencia elegida en Ajustes (`Ausente` por defecto). La hora de fin **no** se toca |
 | **Reanudar** | Desplaza la hora de fin por los minutos parados y vuelve a `Available` |
-| **Cancelar jornada** | Con confirmacion. Cierra y pone `Offline`/`OffWork` |
+| **Cancelar jornada** | Con confirmacion. Cierra y **limpia** la presencia preferida: Teams vuelve a calcularla sola |
 | **Fin de la cuenta atras** | Presencia a `Offline`/`OffWork` y aviso con mensaje (M16) |
 
 **Regla central**: el restante es **siempre una resta contra el reloj real**, nunca un contador
@@ -54,13 +54,31 @@ congela la cifra sin mover la hora de fin. Ver ADR-005.
 
 ### M3 — Presencia (Microsoft Graph)
 
-**Fichero**: `PresenciaService.cs` · **Estado**: verificado 2026-09-06
+**Fichero**: `GraphService.cs` · **Estado**: verificado 2026-09-06
 
-POST a `users/{objectId}/presence/setUserPreferredPresence`. Detalle en `_hilo/DEPENDENCIAS.md`.
+Dos operaciones, y la diferencia entre ellas importa:
+
+| Operacion | Ruta | Efecto |
+|---|---|---|
+| `EstablecerPresenciaAsync` | POST `users/{objectId}/presence/setUserPreferredPresence` | **Fija** la presencia. Teams no la vuelve a tocar, aunque estes teclando |
+| `LimpiarPresenciaAsync` | POST `users/{objectId}/presence/clearUserPreferredPresence` | **Devuelve el mando a Teams**, que vuelve a calcularla sola |
+
+Fijar es lo correcto al empezar, al pausar y al terminar la jornada. **Limpiar es lo correcto al
+cancelar**: cancelar da la jornada por no ocurrida, asi que la aplicacion tiene que dejar de
+opinar. Antes, cancelar fijaba `Offline`/`OffWork` y te dejaba marcado como fuera del trabajo el
+resto del dia, **sin forma de deshacerlo desde la aplicacion**.
+
+Comprobado midiendo la diferencia, no asumiendola: se pausa (fija `Away`/`Away`, un valor que
+Teams nunca calcularia solo), se cancela, y `GET /me/presence` pasa a `Available`/`Available`. Si
+el borrado fallara seguiria en `Away`; con el comportamiento anterior habria pasado a `Offline`.
+
+`clearUserPreferredPresence` **exige cuerpo JSON** aunque no lleve datos: sin `{}` responde 400.
+Y como en `setUserPreferredPresence`, la ruta `/me/presence/...` da 404 — hay que usar el
+`objectId` explicito. Detalle en `_hilo/DEPENDENCIAS.md`.
 
 ### M4 — Autenticacion
 
-**Fichero**: `PresenciaService.cs` · **Estado**: verificado 2026-09-06
+**Fichero**: `GraphService.cs` · **Estado**: verificado 2026-09-06
 
 Codigo de dispositivo con MSAL, token cacheado en disco cifrado con DPAPI. El codigo solo se pide
 la primera vez y cuando caduca el refresh token.
