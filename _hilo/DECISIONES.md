@@ -18,6 +18,7 @@
 | ADR-006 | Cerrar la ventana manda a la bandeja | 2026-09-06 | Aceptada | Frontend |
 | ADR-007 | Sin capas, sin DI, namespace plano | 2026-09-06 | Aceptada | Arquitectura |
 | ADR-008 | WinForms y no WPF | 2026-09-06 | Aceptada | Frontend |
+| ADR-009 | Estado compartido entre equipos via la carpeta de aplicacion de OneDrive | 2026-09-06 | Aceptada | Arquitectura |
 
 ---
 
@@ -156,6 +157,10 @@ pero ataba a la red y a la licencia.
 
 Todo el estado en `%APPDATA%/MiJornada/estado.json`.
 
+> ⚠️ **Modificada por ADR-009 (2026-09-06).** El JSON local sigue siendo el almacen de
+> trabajo, pero ya no es la unica copia: se sincroniza con la carpeta de aplicacion de OneDrive.
+> Lo que sigue describe la decision original.
+
 #### Consecuencias
 
 - Sin dependencia de red ni de licencia.
@@ -251,6 +256,73 @@ WinForms, dibujando el anillo en el `Paint` de un panel.
 - Menos ceremonia para el mismo resultado.
 - WinForms no tiene transparencia real: un `Label` transparente pinta el fondo de su **padre**
   (por eso la cuenta atras es hija del panel del anillo). Ver DT-004.
+
+---
+
+### ADR-009: Estado compartido entre equipos via la carpeta de aplicacion de OneDrive
+
+**Estado**: Aceptada · **Fecha**: 2026-09-06 · **Categoria**: Arquitectura
+**Modifica**: ADR-004
+
+#### Contexto
+
+El uso real es en **dos equipos** (casa y remoto), con Teams abierto en ambos y en el movil. Con
+el estado solo en `%APPDATA%`, el segundo equipo mostraba "Iniciar jornada" y permitia arrancar
+una **segunda jornada** con su propia hora de fin.
+
+Lo que lo hace grave: **la presencia de Teams es por usuario, no por dispositivo**.
+`setUserPreferredPresence` fija un unico valor para toda la cuenta, lo mande quien lo mande. Los
+dos equipos se pelearian por el mismo valor.
+
+#### Decision
+
+Compartir estado y ajustes en `me/drive/special/approot` (permiso delegado
+`Files.ReadWrite.AppFolder`), **manteniendo el fichero local como almacen de trabajo**. Graph es
+una capa de sincronizacion, no la fuente de verdad en caliente.
+
+Esa separacion no es un detalle de implementacion, es lo que hace que sea seguro:
+
+- La cuenta atras corre en un temporizador de **un segundo**; ninguna E/S de red puede colgar de
+  esa ruta.
+- `Cancelar_Click` y `Reloj_Tick` son `async void`. Meter red dentro de `Guardar()` habria
+  convertido **DT-005 de riesgo teorico en caida probable**, y una caida se lleva por delante la
+  jornada — justo lo que la aplicacion existe para evitar.
+- Sin red, la jornada sigue corriendo desde el fichero local y se sube al recuperar conexion.
+
+**Conflictos**: se escribe con `If-Match` y el eTag de la ultima lectura; un `412` significa que
+el otro equipo se adelanto, se relee y **gana el `Actualizado` mas reciente**. Con un solo usuario
+es correcto: no haces cosas contradictorias en dos equipos en el mismo segundo.
+
+**Excepcion deliberada en el cierre**: al llegar a cero se cambia la presencia **primero** y se
+publica despues, sin reclamar el cierre con `If-Match`. Reclamarlo seria mas elegante, pero
+dejaria al equipo sin cerrar la jornada cuando no hay red. El precio es que, con los dos equipos
+encendidos, ambos manden el mismo `Offline`/`OffWork`: inocuo, es idempotente.
+
+#### Consecuencias
+
+- Cualquier equipo puede pausar y cancelar la jornada: es del usuario, no del equipo. Un texto
+  discreto indica donde se inicio cuando no fue este.
+- **Se gana algo que antes no habia**: si se apaga el equipo que inicio la jornada, otro con la
+  aplicacion abierta la cierra. Antes nadie ponia el "Fuera del trabajo".
+- Ampliar `Config.Scopes` invalida el token en cache: un consentimiento nuevo por equipo.
+- `Fin` y `PausaDesde` pasan de `DateTime` a `DateTimeOffset`: una hora sin desfase es ambigua
+  cuando el estado viaja.
+- **No resuelve dos instancias en el MISMO equipo**: eso sigue siendo DT-009.
+
+#### Alternativas descartadas
+
+| Alternativa | Por que no |
+|---|---|
+| **Solo documentar la limitacion** ("ficha en un solo equipo") | Depende de la disciplina del usuario para evitar un fallo que la aplicacion puede evitar sola |
+| **Carpeta sincronizada de OneDrive** (fichero en disco) | Sin permisos nuevos, pero la latencia de sincronizacion es opaca y genera ficheros de conflicto (`estado-EQUIPO.json`) que nadie resuelve |
+| **`Files.ReadWrite`** | Funciona, pero da acceso a **todo** el OneDrive del usuario para guardar un JSON de seis campos. Desproporcionado |
+| **Propiedades de extension en el objeto de usuario** (`User.ReadWrite`) | Permite modificar el perfil del usuario: mas permiso del necesario |
+
+> La documentacion de Microsoft se contradice sobre si `Files.ReadWrite.AppFolder` vale para
+> cuentas de trabajo: el articulo actual de Graph dice que si, el antiguo de OneDrive dice que es
+> solo para cuentas personales. **Verificado empiricamente el 2026-09-06 con esta cuenta**: el
+> scope se concede, `GET /me/drive/special/approot` responde 200 y el `PUT` devuelve eTag. El
+> documento antiguo esta desfasado.
 
 ---
 

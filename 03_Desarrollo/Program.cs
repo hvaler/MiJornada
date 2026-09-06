@@ -5,6 +5,13 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        // --datos <ruta> redirige la carpeta de datos. Va PRIMERO, antes de tocar ajustes o
+        // estado: permite levantar dos instancias con datos separados en una sola máquina y así
+        // probar la sincronización entre equipos sin necesitar dos equipos.
+        var d = Array.IndexOf(args, "--datos");
+        if (d >= 0 && d + 1 < args.Length)
+            Rutas.Redirigir(args[d + 1]);
+
         // La duración habitual sale de los ajustes del usuario...
         Config.Jornada = Ajustes.Cargar().Duracion;
 

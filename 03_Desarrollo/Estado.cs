@@ -9,7 +9,7 @@ public static class Config
     /// Id de la aplicación "Mi jornada" registrada en Entra ID el 2026-09-06 con
     /// <c>02_Entorno/crear-registro-entra.ps1</c>. Cliente público, sin secreto (ADR-003):
     /// un Id de cliente público es información pública, no una credencial.
-    /// Su único permiso es el delegado <c>Presence.ReadWrite</c>.
+    /// Sus permisos delegados son <c>Presence.ReadWrite</c> y <c>Files.ReadWrite.AppFolder</c>.
     /// </summary>
     public const string ClientId = "dbcd6425-561b-4d91-a4d5-f0bb25b31241";
 
@@ -21,7 +21,20 @@ public static class Config
     /// </summary>
     public const string TenantId = "bcd2701c-aa9b-4d12-ba20-f3e3b83070c1";
 
-    public static readonly string[] Scopes = { "Presence.ReadWrite" };
+    /// <summary>
+    /// Permisos delegados. <c>Files.ReadWrite.AppFolder</c> da acceso SOLO a la carpeta propia
+    /// de esta aplicación en OneDrive (<c>Aplicaciones/Mi jornada</c>), no al resto de ficheros:
+    /// es el permiso más estrecho que permite compartir el estado entre equipos.
+    /// Verificado el 2026-09-06 que funciona con cuenta de trabajo, pese a que la documentación
+    /// antigua de OneDrive lo daba por exclusivo de cuentas personales.
+    /// OJO: MSAL cachea el token por conjunto de scopes. Tocar este array obliga a un
+    /// consentimiento nuevo, y por tanto a un código de dispositivo más.
+    /// </summary>
+    public static readonly string[] Scopes =
+    {
+        "Presence.ReadWrite",
+        "Files.ReadWrite.AppFolder",
+    };
 
     /// <summary>
     /// Duración de la jornada en curso. Sale de <see cref="Ajustes"/>, salvo que se haya
@@ -62,8 +75,19 @@ public class Ajustes
     /// Día del último fichaje automático. Evita que volver del café vuelva a fichar: el
     /// automatismo salta una vez al día y el resto de desbloqueos no hacen nada.
     /// Vive aquí y no en <see cref="Estado"/> porque debe sobrevivir a <see cref="Estado.Limpiar"/>.
+    /// Al sincronizarse entre equipos, además evita que dos equipos fichen el mismo día.
     /// </summary>
     public DateTime? UltimoAutoFichaje { get; set; }
+
+    /// <summary>
+    /// Compartir estado y ajustes entre equipos a través de la carpeta de aplicación de
+    /// OneDrive. Activado por defecto: sin esto, cada equipo cree que no hay jornada y se
+    /// pueden arrancar dos, que se pelearían por la misma presencia de Teams.
+    /// </summary>
+    public bool SincronizarEntreEquipos { get; set; } = true;
+
+    /// <summary>Momento del último cambio, en UTC. Al sincronizar, gana el más reciente.</summary>
+    public DateTimeOffset? Actualizado { get; set; }
 
     [JsonIgnore]
     public TimeSpan Duracion => TimeSpan.FromMinutes(Math.Clamp(DuracionMinutos, 1, 24 * 60));
@@ -74,7 +98,9 @@ public class Ajustes
         Array.Find(OpcionPresencia.ParaPausa, o => o.Disponibilidad == PausaDisponibilidad)
         ?? OpcionPresencia.ParaPausa[0];
 
-    private static readonly string Fichero = Path.Combine(Rutas.Carpeta, "ajustes.json");
+    // Propiedad y no campo estático: Rutas.Carpeta puede redirigirse en el arranque, y un
+    // inicializador estático la capturaría antes de que Program.Main llegue a hacerlo.
+    private static string Fichero => Path.Combine(Rutas.Carpeta, "ajustes.json");
 
     public static Ajustes Cargar()
     {
@@ -90,8 +116,15 @@ public class Ajustes
         return new Ajustes();
     }
 
-    public void Guardar()
+    /// <param name="sellar">
+    /// Marca la fecha de cambio. Va a <c>false</c> cuando se está adoptando lo que vino de otro
+    /// equipo: si se sellara, este equipo parecería el autor del cambio y ganaría siempre el
+    /// siguiente conflicto.
+    /// </param>
+    public void Guardar(bool sellar = true)
     {
+        if (sellar) Actualizado = DateTimeOffset.UtcNow;
+
         Directory.CreateDirectory(Rutas.Carpeta);
         File.WriteAllText(Fichero, JsonSerializer.Serialize(this,
             new JsonSerializerOptions { WriteIndented = true }));
@@ -121,8 +154,21 @@ public record OpcionPresencia(string Etiqueta, string Disponibilidad, string Act
 /// <summary>Carpeta de datos de la aplicación, compartida por estado, ajustes y caché de token.</summary>
 public static class Rutas
 {
-    public static readonly string Carpeta = Path.Combine(
+    private static string? _carpeta;
+
+    /// <summary>
+    /// Carpeta de datos. Se puede redirigir con <c>--datos &lt;ruta&gt;</c>, que es lo que permite
+    /// simular dos equipos distintos en una sola máquina para probar la sincronización.
+    /// </summary>
+    public static string Carpeta => _carpeta ??= Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MiJornada");
+
+    /// <summary>Debe llamarse en <c>Program.Main</c>, antes de tocar estado o ajustes.</summary>
+    public static void Redirigir(string ruta)
+    {
+        _carpeta = Path.GetFullPath(ruta);
+        Directory.CreateDirectory(_carpeta);
+    }
 }
 
 /// <summary>Icono propio de la aplicación, incrustado como recurso.</summary>
@@ -153,9 +199,27 @@ public enum EstadoJornada { SinFichar, Activa, Pausada }
 
 public class Estado
 {
+    /// <summary>Formato del documento. Permite cambiarlo sin romper equipos desactualizados.</summary>
+    public int Esquema { get; set; } = 1;
+
     public EstadoJornada Situacion { get; set; } = EstadoJornada.SinFichar;
-    public DateTime? Fin { get; set; }
-    public DateTime? PausaDesde { get; set; }
+
+    // DateTimeOffset y no DateTime: el estado viaja entre equipos, y una hora sin desfase es
+    // ambigua. Los estado.json ya escritos llevan el desfase, así que deserializan sin pérdida.
+    public DateTimeOffset? Fin { get; set; }
+    public DateTimeOffset? PausaDesde { get; set; }
+
+    /// <summary>Equipo que hizo el último cambio, para poder decir "iniciada en PORTATIL-HUGO".</summary>
+    public string? Dispositivo { get; set; }
+
+    /// <summary>Momento del último cambio, en UTC. Al resolver conflictos, gana el más reciente.</summary>
+    public DateTimeOffset? Actualizado { get; set; }
+
+    /// <summary>Cierto si el último cambio lo hizo este equipo.</summary>
+    [JsonIgnore]
+    public bool EsDeEsteEquipo =>
+        Dispositivo is null || string.Equals(Dispositivo, Environment.MachineName,
+                                             StringComparison.OrdinalIgnoreCase);
 
     [JsonIgnore]
     public TimeSpan Restante
@@ -165,7 +229,7 @@ public class Estado
             if (Fin is null) return TimeSpan.Zero;
             var referencia = Situacion == EstadoJornada.Pausada && PausaDesde is not null
                 ? PausaDesde.Value
-                : DateTime.Now;
+                : DateTimeOffset.Now;
             var queda = Fin.Value - referencia;
             return queda > TimeSpan.Zero ? queda : TimeSpan.Zero;
         }
@@ -179,7 +243,7 @@ public class Estado
 
     // ---------------------------------------------------------------- persistencia
 
-    private static readonly string Fichero = Path.Combine(Rutas.Carpeta, "estado.json");
+    private static string Fichero => Path.Combine(Rutas.Carpeta, "estado.json");
 
     public static Estado Cargar()
     {
@@ -195,11 +259,34 @@ public class Estado
         return new Estado();
     }
 
-    public void Guardar()
+    /// <param name="sellar">
+    /// Marca este equipo y la hora como autores del cambio. Va a <c>false</c> al adoptar lo que
+    /// vino de otro equipo: si se sellara, este equipo pasaría por autor y ganaría siempre el
+    /// conflicto siguiente, además de mentir en el "iniciada en ...".
+    /// </param>
+    public void Guardar(bool sellar = true)
     {
+        if (sellar)
+        {
+            Dispositivo = Environment.MachineName;
+            Actualizado = DateTimeOffset.UtcNow;
+        }
+
         Directory.CreateDirectory(Rutas.Carpeta);
         File.WriteAllText(Fichero, JsonSerializer.Serialize(this,
             new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    /// <summary>Copia los valores de otro estado (el que vino de Graph) sobre este.</summary>
+    public void Adoptar(Estado otro)
+    {
+        Esquema = otro.Esquema;
+        Situacion = otro.Situacion;
+        Fin = otro.Fin;
+        PausaDesde = otro.PausaDesde;
+        Dispositivo = otro.Dispositivo;
+        Actualizado = otro.Actualizado;
+        Guardar(sellar: false);
     }
 
     public void Limpiar()

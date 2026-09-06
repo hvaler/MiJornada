@@ -18,6 +18,7 @@ public class DialogoAjustes : Form
     private readonly NumericUpDown _minutos = new();
     private readonly ComboBox _pausa = new();
     private readonly CheckBox _autoFichaje = new();
+    private readonly CheckBox _sincronizar = new();
     private readonly Label _aviso = new();
     private readonly Button _guardar = new();
 
@@ -27,7 +28,7 @@ public class DialogoAjustes : Form
         _jornadaEnMarcha = jornadaEnMarcha;
 
         Text = "Ajustes";
-        ClientSize = new Size(340, 344);
+        ClientSize = new Size(340, 396);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -103,14 +104,36 @@ public class DialogoAjustes : Form
             ForeColor = Gris
         });
 
+        // ------------------------------------------------------ entre equipos
+        Añadir(new Label
+        {
+            Bounds = new Rectangle(20, 282, 300, 20),
+            Text = "Entre equipos",
+            ForeColor = Tinta,
+            Font = new Font("Segoe UI", 9f, FontStyle.Bold)
+        });
+
+        _sincronizar.SetBounds(20, 308, 300, 22);
+        _sincronizar.Text = "Compartir la jornada entre mis equipos";
+        _sincronizar.ForeColor = Tinta;
+        _sincronizar.Checked = _ajustes.SincronizarEntreEquipos;
+        Añadir(_sincronizar);
+
+        Añadir(new Label
+        {
+            Bounds = new Rectangle(38, 330, 290, 32),
+            Text = "Guarda el estado en tu OneDrive para que no se te arranquen dos jornadas.",
+            ForeColor = Gris
+        });
+
         // ---------------------------------------------------------- avisos
-        _aviso.SetBounds(20, 278, 300, 20);
+        _aviso.SetBounds(20, 366, 300, 20);
         _aviso.ForeColor = Color.FromArgb(164, 38, 44);
         _aviso.Text = "";
         Añadir(_aviso);
 
         // --------------------------------------------------------- botones
-        var cancelar = new Button { Bounds = new Rectangle(146, 302, 82, 30), Text = "Cancelar" };
+        var cancelar = new Button { Bounds = new Rectangle(146, 356, 82, 30), Text = "Cancelar" };
         cancelar.FlatStyle = FlatStyle.Flat;
         cancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 198, 196);
         cancelar.BackColor = Color.White;
@@ -119,7 +142,7 @@ public class DialogoAjustes : Form
         cancelar.DialogResult = DialogResult.Cancel;
         Añadir(cancelar);
 
-        _guardar.SetBounds(236, 302, 84, 30);
+        _guardar.SetBounds(236, 356, 84, 30);
         _guardar.Text = "Guardar";
         _guardar.FlatStyle = FlatStyle.Flat;
         _guardar.FlatAppearance.BorderSize = 0;
@@ -133,7 +156,7 @@ public class DialogoAjustes : Form
         // Enlace discreto abajo a la izquierda, para no competir con Guardar/Cancelar.
         var acerca = new LinkLabel
         {
-            Bounds = new Rectangle(20, 308, 110, 20),
+            Bounds = new Rectangle(20, 362, 110, 20),
             Text = "Acerca de",
             LinkColor = Gris,
             LinkBehavior = LinkBehavior.HoverUnderline,
@@ -197,6 +220,8 @@ public class DialogoAjustes : Form
         if (_ajustes.FicharAlDesbloquear && !_autoFichaje.Checked)
             _ajustes.UltimoAutoFichaje = null;
         _ajustes.FicharAlDesbloquear = _autoFichaje.Checked;
+
+        _ajustes.SincronizarEntreEquipos = _sincronizar.Checked;
 
         _ajustes.Guardar();
         DialogResult = DialogResult.OK;

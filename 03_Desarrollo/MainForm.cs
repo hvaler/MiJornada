@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using Microsoft.Win32;
 
@@ -15,8 +16,15 @@ public class MainForm : Form
 
     private readonly Estado _estado = Estado.Cargar();
     private readonly Ajustes _ajustes = Ajustes.Cargar();
-    private readonly Lazy<PresenciaService> _presenciaLazy = new(() => new PresenciaService());
-    private PresenciaService Presencia => _presenciaLazy.Value;
+    private readonly Lazy<GraphService> _graphLazy;
+    private GraphService Graph => _graphLazy.Value;
+
+    private readonly Lazy<SincronizacionGraph> _syncLazy;
+    private SincronizacionGraph Sync => _syncLazy.Value;
+
+    // Temporizador propio para la sincronización: NO se cuelga del reloj de 1 s, que solo
+    // repinta. Ninguna E/S de red puede colgar de la ruta que refresca la interfaz.
+    private readonly System.Windows.Forms.Timer _sincronizador = new();
 
     private readonly Panel _anillo = new();
     private readonly Label _lblTiempo = new();
@@ -28,6 +36,7 @@ public class MainForm : Form
 
     private readonly Button _btnAjustes = new();
     private readonly ToolTip _pista = new();
+    private readonly Label _lblSync = new();
 
     // Icono de bandeja: el estatico cuando no hay jornada, y uno dibujado al vuelo mientras
     // corre, para ver cuanto queda sin abrir la ventana.
@@ -40,6 +49,11 @@ public class MainForm : Form
 
     public MainForm()
     {
+        // Los Lazy van aquí y no en el inicializador de campo porque necesitan métodos de
+        // instancia (el callback del código de dispositivo).
+        _graphLazy = new(() => new GraphService(MostrarCodigoDispositivo));
+        _syncLazy = new(() => new SincronizacionGraph(Graph));
+
         Text = "Mi jornada";
         ClientSize = new Size(340, 430);
         FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -125,10 +139,29 @@ public class MainForm : Form
         // (ver OnFormClosing) o el manejador seguiria vivo sobre un formulario ya destruido.
         SystemEvents.SessionSwitch += Sesion_Cambiada;
 
+        // ------------------------------------------------- indicador de sincronización
+        // Discreto y solo visible cuando hay algo que decir: sincronización desactivada, o
+        // cambios que no se han podido subir.
+        _lblSync.SetBounds(50, 400, 240, 20);
+        _lblSync.TextAlign = ContentAlignment.MiddleCenter;
+        _lblSync.Font = new Font("Segoe UI", 8f);
+        _lblSync.ForeColor = Gris;
+        _lblSync.Visible = false;
+        Controls.Add(_lblSync);
+
         // ---------------------------------------------------------------- reloj
         _reloj.Interval = 1000;
         _reloj.Tick += Reloj_Tick;
         _reloj.Start();
+
+        // ------------------------------------------------------- sincronización
+        _sincronizador.Interval = 60_000;
+        _sincronizador.Tick += Sincronizador_Tick;
+        _sincronizador.Start();
+
+        // La primera sincronización se hace en Shown y no aquí: el arranque es síncrono y
+        // meter red en el constructor retrasaría que la ventana apareciera.
+        Shown += async (_, _) => await SincronizarAsync();
 
         // Si la jornada venció con la aplicación cerrada, se descarta en silencio.
         if (_estado.Situacion == EstadoJornada.Activa && _estado.Restante == TimeSpan.Zero)
@@ -183,6 +216,75 @@ public class MainForm : Form
         }
     }
 
+    // -------------------------------------------------------------- sincronización
+
+    private async void Sincronizador_Tick(object? sender, EventArgs e) => await SincronizarAsync();
+
+    /// <summary>
+    /// Trae el estado y los ajustes compartidos, y reintenta lo que quedó pendiente de subir.
+    /// Nunca lanza: la sincronización es un extra, no una condición para que la jornada corra.
+    /// </summary>
+    private async Task SincronizarAsync()
+    {
+        try
+        {
+            if (!_ajustes.SincronizarEntreEquipos) { ActualizarIndicadorSync(); return; }
+
+            if (await Sync.TraerAjustesAsync(_ajustes) && !Config.JornadaForzada)
+                Config.Jornada = _ajustes.Duracion;
+
+            var r = await Sync.TraerEstadoAsync(_estado, _ajustes);
+
+            // Si lo local era más nuevo y quedaba algo por subir, se sube ahora.
+            if (r == ResultadoLectura.LocalManda && Sync.Pendiente)
+                await Sync.PublicarEstadoAsync(_estado, _ajustes);
+
+            Refrescar();
+        }
+        catch (Exception ex)
+        {
+            // Blindaje: este método se invoca desde un manejador async void del temporizador.
+            Debug.WriteLine($"Sincronización: {ex.Message}");
+        }
+    }
+
+    /// <summary>Publica el estado tras una transición. Nunca lanza.</summary>
+    private async Task PublicarAsync()
+    {
+        try
+        {
+            await Sync.PublicarEstadoAsync(_estado, _ajustes);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Publicación: {ex.Message}");
+        }
+        ActualizarIndicadorSync();
+    }
+
+    private void ActualizarIndicadorSync()
+    {
+        if (!_ajustes.SincronizarEntreEquipos)
+        {
+            _lblSync.Text = "Solo en este equipo";
+            _lblSync.ForeColor = Pista;
+            _lblSync.Visible = true;
+            return;
+        }
+
+        if (Sync.Pendiente)
+        {
+            _lblSync.Text = "Sin sincronizar";
+            _lblSync.ForeColor = Ambar;
+            _pista.SetToolTip(_lblSync, Sync.UltimoError ?? "No se pudo hablar con Microsoft Graph.");
+            _lblSync.Visible = true;
+            return;
+        }
+
+        // Todo en orden: no se dice nada. Un indicador permanente de "sincronizado" sería ruido.
+        _lblSync.Visible = false;
+    }
+
     // ------------------------------------------------------------------ ajustes
 
     /// <summary>Accesible desde el menu de la bandeja y desde el dialogo de ajustes.</summary>
@@ -195,20 +297,30 @@ public class MainForm : Form
         dlg.ShowDialog(Visible ? this : null);
     }
 
-    private void Ajustes_Click(object? sender, EventArgs e)
+    private async void Ajustes_Click(object? sender, EventArgs e)
     {
-        var enMarcha = _estado.Situacion != EstadoJornada.SinFichar;
+        try
+        {
+            var enMarcha = _estado.Situacion != EstadoJornada.SinFichar;
 
-        using var dlg = new DialogoAjustes(_ajustes, enMarcha);
-        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+            using var dlg = new DialogoAjustes(_ajustes, enMarcha);
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
 
-        // --minutos manda sobre los ajustes mientras dure esta ejecución.
-        if (!Config.JornadaForzada) Config.Jornada = _ajustes.Duracion;
+            // --minutos manda sobre los ajustes mientras dure esta ejecución.
+            if (!Config.JornadaForzada) Config.Jornada = _ajustes.Duracion;
 
-        // Devolver el foco al botón principal: si no, el engranaje se queda con el
-        // rectángulo de foco dibujado encima.
-        _btnPrincipal.Focus();
-        Refrescar();
+            // Devolver el foco al botón principal: si no, el engranaje se queda con el
+            // rectángulo de foco dibujado encima.
+            _btnPrincipal.Focus();
+            Refrescar();
+
+            await Sync.PublicarAjustesAsync(_ajustes);
+            ActualizarIndicadorSync();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Ajustes: {ex.Message}");
+        }
     }
 
     // ------------------------------------------------------------------ pintado
@@ -246,7 +358,7 @@ public class MainForm : Form
             case EstadoJornada.Activa:
                 _lblTiempo.Text = _estado.Restante.ToString(@"hh\:mm\:ss");
                 _lblTiempo.ForeColor = Tinta;
-                _lblRotulo.Text = $"Termina a las {_estado.Fin:HH:mm}";
+                _lblRotulo.Text = $"Termina a las {_estado.Fin:HH:mm}{SufijoEquipo()}";
                 EstiloSecundario(_btnPrincipal, "Pausar");
                 _lnkCancelar.Visible = true;
                 break;
@@ -254,7 +366,7 @@ public class MainForm : Form
             case EstadoJornada.Pausada:
                 _lblTiempo.Text = _estado.Restante.ToString(@"hh\:mm\:ss");
                 _lblTiempo.ForeColor = Gris;
-                _lblRotulo.Text = $"En pausa desde las {_estado.PausaDesde:HH:mm}";
+                _lblRotulo.Text = $"En pausa desde las {_estado.PausaDesde:HH:mm}{SufijoEquipo()}";
                 EstiloPrimario(_btnPrincipal, "Reanudar");
                 _lnkCancelar.Visible = true;
                 break;
@@ -270,6 +382,7 @@ public class MainForm : Form
 
         _tray.Text = _lblRotulo.Text.Length > 60 ? "Mi jornada" : _lblRotulo.Text;
         ActualizarIconoBandeja();
+        ActualizarIndicadorSync();
     }
 
     /// <summary>
@@ -299,6 +412,24 @@ public class MainForm : Form
         _tray.Icon = nuevo;              // primero se asigna...
         _iconoDinamico?.Dispose();       // ...y después se suelta el anterior
         _iconoDinamico = nuevo;
+    }
+
+    /// <summary>
+    /// Añade el nombre del equipo cuando la jornada la inició otro. La jornada es del usuario,
+    /// no del equipo —se puede pausar y cancelar desde cualquiera—, pero saber de dónde viene
+    /// ayuda cuando algo no cuadra.
+    /// </summary>
+    private string SufijoEquipo()
+    {
+        if (_estado.EsDeEsteEquipo)
+        {
+            _pista.SetToolTip(_lblRotulo, string.Empty);
+            return string.Empty;
+        }
+
+        _pista.SetToolTip(_lblRotulo,
+            $"Jornada iniciada en {_estado.Dispositivo}. Puedes pausarla o cancelarla desde aquí.");
+        return $" · {_estado.Dispositivo}";
     }
 
     private static void EstiloPrimario(Button b, string texto)
@@ -336,64 +467,117 @@ public class MainForm : Form
     /// consumir el intento del dia cuando la llamada a Graph ha fallado.</returns>
     private async Task<bool> IniciarAsync()
     {
+        // Lectura crítica: es la que evita arrancar una segunda jornada cuando ya hay una
+        // corriendo en el otro equipo. Si no hay red, se sigue adelante con lo local — mejor
+        // eso que dejar al usuario sin poder fichar (ver el plan: degradar, no bloquear).
+        if (await Sync.TraerEstadoAsync(_estado, _ajustes) == ResultadoLectura.AdoptadoRemoto
+            && _estado.Situacion != EstadoJornada.SinFichar)
+        {
+            Refrescar();
+            MessageBox.Show(this,
+                $"Ya hay una jornada en marcha, iniciada en {_estado.Dispositivo}."
+                + Environment.NewLine + Environment.NewLine
+                + "Se muestra esa. Puedes pausarla o cancelarla desde aquí.",
+                "Mi jornada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
         if (!await CambiarPresenciaAsync("Available", "Available")) return false;
 
         _estado.Situacion = EstadoJornada.Activa;
-        _estado.Fin = DateTime.Now + Config.Jornada;
+        _estado.Fin = DateTimeOffset.Now + Config.Jornada;
         _estado.PausaDesde = null;
         _estado.Guardar();
         Refrescar();
+        await PublicarAsync();
         return true;
     }
 
     private async Task PausarAsync()
     {
         _estado.Situacion = EstadoJornada.Pausada;
-        _estado.PausaDesde = DateTime.Now;
+        _estado.PausaDesde = DateTimeOffset.Now;
         _estado.Guardar();
         Refrescar();
         await CambiarPresenciaAsync(_ajustes.Pausa.Disponibilidad, _ajustes.Pausa.Actividad);
+        await PublicarAsync();
     }
 
     private async Task ReanudarAsync()
     {
         if (_estado.PausaDesde is not null)
-            _estado.Fin = _estado.Fin!.Value + (DateTime.Now - _estado.PausaDesde.Value);
+            _estado.Fin = _estado.Fin!.Value + (DateTimeOffset.Now - _estado.PausaDesde.Value);
 
         _estado.Situacion = EstadoJornada.Activa;
         _estado.PausaDesde = null;
         _estado.Guardar();
         Refrescar();
         await CambiarPresenciaAsync("Available", "Available");
+        await PublicarAsync();
     }
 
+    // async void: el try/catch NO es decorativo. Sin él, una excepción aquí tumba el proceso
+    // y con él la jornada. Era DT-005 como riesgo teórico; al entrar red en juego pasó a
+    // probable, así que se blinda.
     private async void Cancelar_Click(object? sender, EventArgs e)
     {
-        var r = MessageBox.Show(this, "¿Seguro que quieres cancelar la jornada?", "Mi jornada",
-            MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-        if (r != DialogResult.Yes) return;
-
-        _estado.Limpiar();
-        Refrescar();
-        await CambiarPresenciaAsync("Offline", "OffWork");
-    }
-
-    private async void Reloj_Tick(object? sender, EventArgs e)
-    {
-        if (_estado.Situacion == EstadoJornada.Activa && _estado.Restante == TimeSpan.Zero && !_finalizando)
+        try
         {
-            _finalizando = true;
+            var r = MessageBox.Show(this, "¿Seguro que quieres cancelar la jornada?", "Mi jornada",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (r != DialogResult.Yes) return;
+
             _estado.Limpiar();
             Refrescar();
             await CambiarPresenciaAsync("Offline", "OffWork");
-            _tray.Visible = true;
-            _tray.ShowBalloonTip(5000, "Jornada finalizada",
-                "Tu estado ha cambiado a Fuera del trabajo.", ToolTipIcon.Info);
-            _finalizando = false;
-            return;
+            await PublicarAsync();
         }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "No se pudo cancelar la jornada",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
 
-        Refrescar();
+    // async void que corre CADA SEGUNDO: si algo lanza aquí, se cae el proceso. Ver DT-005.
+    private async void Reloj_Tick(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_estado.Situacion == EstadoJornada.Activa && _estado.Restante == TimeSpan.Zero && !_finalizando)
+            {
+                _finalizando = true;
+                try
+                {
+                    _estado.Limpiar();
+                    Refrescar();
+
+                    // Se cierra PRIMERO y se publica después, a propósito. Reclamar el cierre
+                    // con If-Match antes de tocar la presencia dejaría al equipo sin cerrar la
+                    // jornada cuando no hay red, y poner el "Fuera del trabajo" es el propósito
+                    // entero de la aplicación. El precio es que, con los dos equipos
+                    // encendidos, ambos manden el mismo Offline/OffWork: inocuo, es idempotente.
+                    await CambiarPresenciaAsync("Offline", "OffWork");
+                    await PublicarAsync();
+
+                    _tray.Visible = true;
+                    _tray.ShowBalloonTip(5000, "Jornada finalizada",
+                        "Tu estado ha cambiado a Fuera del trabajo.", ToolTipIcon.Info);
+                }
+                finally
+                {
+                    _finalizando = false;
+                }
+                return;
+            }
+
+            Refrescar();
+        }
+        catch (Exception ex)
+        {
+            // No se molesta al usuario con un diálogo cada segundo: se anota y se sigue.
+            Debug.WriteLine($"Reloj: {ex.Message}");
+        }
     }
 
     private async Task<bool> CambiarPresenciaAsync(string disponibilidad, string actividad)
@@ -402,7 +586,7 @@ public class MainForm : Form
         _btnPrincipal.Enabled = false;
         try
         {
-            await Presencia.EstablecerAsync(disponibilidad, actividad, MostrarCodigoDispositivo);
+            await Graph.EstablecerPresenciaAsync(disponibilidad, actividad);
             return true;
         }
         catch (Exception ex)
@@ -423,7 +607,7 @@ public class MainForm : Form
         Invoke(() =>
         {
             Clipboard.SetText(codigo);
-            PresenciaService.AbrirNavegador(url);
+            GraphService.AbrirNavegador(url);
             MessageBox.Show(this,
                 $"Pega este código en la ventana del navegador que se acaba de abrir:\n\n{codigo}\n\n" +
                 "Ya está copiado en el portapapeles. Cuando termines, vuelve aquí.",
@@ -433,12 +617,16 @@ public class MainForm : Form
 
     // -------------------------------------------------------------------- cierre
 
-    private void Restaurar()
+    private async void Restaurar()
     {
         Show();
         WindowState = FormWindowState.Normal;
         Activate();
         _tray.Visible = false;
+
+        // Vuelves a esta ventana: es buen momento para enterarse de lo que hizo el otro equipo
+        // sin esperar al siguiente ciclo de 60 s.
+        await SincronizarAsync();
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -456,6 +644,8 @@ public class MainForm : Form
         }
 
         SystemEvents.SessionSwitch -= Sesion_Cambiada;
+        _sincronizador.Stop();
+        _sincronizador.Dispose();
         _tray.Visible = false;
         _tray.Icon = null;
         _iconoDinamico?.Dispose();

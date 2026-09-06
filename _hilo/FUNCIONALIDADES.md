@@ -182,6 +182,35 @@ Detalles tecnicos que no son opcionales:
 | **Desbloquear**, resto del dia | Nada. Volver del cafe no vuelve a fichar |
 | **Suspender / hibernar** | Nada especial: al volver, la resta contra el reloj real da el valor correcto (PAT-001) |
 
+### M12 — Estado compartido entre equipos
+
+**Ficheros**: `SincronizacionGraph.cs`, `GraphService.cs` · **Estado**: verificado 2026-09-06
+
+Estado y ajustes viajan por `me/drive/special/approot` (carpeta privada de la aplicacion en
+OneDrive). Ver **ADR-009** para el porque y las alternativas descartadas.
+
+| Regla | |
+|---|---|
+| Almacen de trabajo | El **fichero local**. Graph es solo la capa de sincronizacion |
+| Se lee | Al abrir la ventana, cada 60 s, al volver de la bandeja, y **antes de iniciar jornada** |
+| Se escribe | Despues de cada transicion |
+| Conflictos | `If-Match` con eTag; un 412 relee y **gana el `Actualizado` mas reciente** |
+| Sin red | La cuenta atras sigue; indicador "Sin sincronizar" y reintento automatico |
+| Sin sesion | La sincronizacion de fondo usa **solo token en cache**: abrir la ventana nunca pide un codigo de dispositivo |
+| Control | Total desde cualquier equipo. El rotulo anade " · EQUIPO" cuando la inicio otro |
+
+**Verificado de punta a punta** con dos instancias de datos separados (`--datos`):
+
+- Instancia virgen, sin `estado.json`, **trae la jornada de OneDrive** y muestra Pausar/Cancelar
+  en lugar de "Iniciar jornada". Ese era el problema a resolver.
+- Pausar en un equipo se adopta en el otro con el fichero **identico byte a byte, incluido el
+  `Actualizado`** — prueba de que no se re-sella al adoptar (si se sellara, el que adopta pasaria
+  por autor y ganaria siempre el conflicto siguiente).
+- Cancelar propaga: una instancia virgen posterior ve "Sin fichar".
+
+**Sin verificar todavia**: el cierre por vencimiento desde el otro equipo. Usa la misma ruta de
+publicacion que la pausa, ya verificada, pero no se ha ejercitado.
+
 ### M11 — Acerca de
 
 **Fichero**: `DialogoAcercaDe.cs` · **Estado**: verificado 2026-09-06
