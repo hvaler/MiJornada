@@ -47,6 +47,10 @@ public class MainForm : Form
     private bool _cerrandoDeVerdad;
     private bool _finalizando;
 
+    /// <summary>Hora de fin sobre la que ya se avisó, para no repetir el globo cada segundo.
+    /// Al reanudar, la hora de fin se desplaza y vuelve a avisarse: es lo deseable.</summary>
+    private DateTimeOffset? _finAvisado;
+
     public MainForm()
     {
         // Los Lazy van aquí y no en el inicializador de campo porque necesitan métodos de
@@ -162,6 +166,10 @@ public class MainForm : Form
         // La primera sincronización se hace en Shown y no aquí: el arranque es síncrono y
         // meter red en el constructor retrasaría que la ventana apareciera.
         Shown += async (_, _) => await SincronizarAsync();
+
+        // Arranque con Windows: a la bandeja sin enseñar la ventana.
+        if (Config.ArrancarMinimizado)
+            Shown += (_, _) => { Hide(); _tray.Visible = true; };
 
         // Si la jornada venció con la aplicación cerrada, se descarta en silencio.
         if (_estado.Situacion == EstadoJornada.Activa && _estado.Restante == TimeSpan.Zero)
@@ -571,6 +579,7 @@ public class MainForm : Form
                 return;
             }
 
+            AvisarSiTocaAsync();
             Refrescar();
         }
         catch (Exception ex)
@@ -578,6 +587,27 @@ public class MainForm : Form
             // No se molesta al usuario con un diálogo cada segundo: se anota y se sigue.
             Debug.WriteLine($"Reloj: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Globo de aviso a N minutos del final, para poder cerrar cosas antes de que cambie el
+    /// estado. Se avisa una sola vez por hora de fin.
+    /// </summary>
+    private void AvisarSiTocaAsync()
+    {
+        if (_ajustes.AvisoMinutos <= 0) return;
+        if (_estado.Situacion != EstadoJornada.Activa) return;
+        if (_estado.Fin is null || _finAvisado == _estado.Fin) return;
+
+        var restante = _estado.Restante;
+        if (restante <= TimeSpan.Zero) return;
+        if (restante > TimeSpan.FromMinutes(_ajustes.AvisoMinutos)) return;
+
+        _finAvisado = _estado.Fin;
+        _tray.Visible = true;
+        _tray.ShowBalloonTip(8000, "La jornada está a punto de terminar",
+            $"Quedan {Math.Ceiling(restante.TotalMinutes):0} min. A las {_estado.Fin:HH:mm} " +
+            "pasarás a Fuera del trabajo.", ToolTipIcon.Info);
     }
 
     private async Task<bool> CambiarPresenciaAsync(string disponibilidad, string actividad)

@@ -19,6 +19,10 @@ public class DialogoAjustes : Form
     private readonly ComboBox _pausa = new();
     private readonly CheckBox _autoFichaje = new();
     private readonly CheckBox _sincronizar = new();
+    private readonly NumericUpDown _avisoMinutos = new();
+    private readonly ToolTip _pista = new();
+    private readonly CheckBox _arrancar = new();
+    private readonly CheckBox _minimizado = new();
     private readonly Label _aviso = new();
     private readonly Button _guardar = new();
 
@@ -28,7 +32,7 @@ public class DialogoAjustes : Form
         _jornadaEnMarcha = jornadaEnMarcha;
 
         Text = "Ajustes";
-        ClientSize = new Size(340, 396);
+        ClientSize = new Size(340, 566);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -66,16 +70,22 @@ public class DialogoAjustes : Form
             Añadir(Texto(20, 74, 300, "No se puede cambiar con una jornada en marcha.", Gris));
         }
 
+        Añadir(Texto(20, 76, 130, "Avisar", Tinta));
+        Rueda(_avisoMinutos, 150, 76, 58, 0, 120, 5);
+        Añadir(Texto(212, 76, 120, "min antes del final"));
+        _avisoMinutos.Value = Math.Clamp(_ajustes.AvisoMinutos, 0, 120);
+        _pista.SetToolTip(_avisoMinutos, "0 = sin aviso");
+
         // --------------------------------------------------- estado al pausar
         Añadir(new Label
         {
-            Bounds = new Rectangle(20, 108, 300, 20),
+            Bounds = new Rectangle(20, 140, 300, 20),
             Text = "Al pausar, aparecer como",
             ForeColor = Tinta,
             Font = new Font("Segoe UI", 9f, FontStyle.Bold)
         });
 
-        _pausa.SetBounds(20, 134, 184, 24);
+        _pausa.SetBounds(20, 166, 184, 24);
         _pausa.DropDownStyle = ComboBoxStyle.DropDownList;
         _pausa.FlatStyle = FlatStyle.Flat;
         _pausa.Items.AddRange(OpcionPresencia.ParaPausa);
@@ -85,13 +95,13 @@ public class DialogoAjustes : Form
         // ------------------------------------------------ fichaje automático
         Añadir(new Label
         {
-            Bounds = new Rectangle(20, 190, 300, 20),
+            Bounds = new Rectangle(20, 222, 300, 20),
             Text = "Automatismos",
             ForeColor = Tinta,
             Font = new Font("Segoe UI", 9f, FontStyle.Bold)
         });
 
-        _autoFichaje.SetBounds(20, 216, 300, 22);
+        _autoFichaje.SetBounds(20, 248, 300, 22);
         _autoFichaje.Text = "Fichar al desbloquear el equipo";
         _autoFichaje.ForeColor = Tinta;
         _autoFichaje.Checked = _ajustes.FicharAlDesbloquear;
@@ -99,21 +109,42 @@ public class DialogoAjustes : Form
 
         Añadir(new Label
         {
-            Bounds = new Rectangle(38, 240, 290, 32),
+            Bounds = new Rectangle(38, 270, 290, 32),
             Text = "Una vez al día. Si ya has fichado o cancelado hoy, no hace nada.",
+            ForeColor = Gris
+        });
+
+        _arrancar.SetBounds(20, 306, 300, 22);
+        _arrancar.Text = "Arrancar con Windows";
+        _arrancar.ForeColor = Tinta;
+        _arrancar.Checked = ArranqueWindows.Activo;
+        _arrancar.CheckedChanged += (_, _) => _minimizado.Enabled = _arrancar.Checked;
+        Añadir(_arrancar);
+
+        _minimizado.SetBounds(38, 330, 290, 22);
+        _minimizado.Text = "y hacerlo en la bandeja, sin abrir la ventana";
+        _minimizado.ForeColor = Gris;
+        _minimizado.Checked = _ajustes.ArrancarMinimizado;
+        _minimizado.Enabled = _arrancar.Checked;
+        Añadir(_minimizado);
+
+        Añadir(new Label
+        {
+            Bounds = new Rectangle(38, 354, 290, 32),
+            Text = "El fichaje al desbloquear solo funciona si la aplicación está abierta.",
             ForeColor = Gris
         });
 
         // ------------------------------------------------------ entre equipos
         Añadir(new Label
         {
-            Bounds = new Rectangle(20, 282, 300, 20),
+            Bounds = new Rectangle(20, 396, 300, 20),
             Text = "Entre equipos",
             ForeColor = Tinta,
             Font = new Font("Segoe UI", 9f, FontStyle.Bold)
         });
 
-        _sincronizar.SetBounds(20, 308, 300, 22);
+        _sincronizar.SetBounds(20, 422, 300, 22);
         _sincronizar.Text = "Compartir la jornada entre mis equipos";
         _sincronizar.ForeColor = Tinta;
         _sincronizar.Checked = _ajustes.SincronizarEntreEquipos;
@@ -121,19 +152,19 @@ public class DialogoAjustes : Form
 
         Añadir(new Label
         {
-            Bounds = new Rectangle(38, 330, 290, 32),
+            Bounds = new Rectangle(38, 444, 290, 32),
             Text = "Guarda el estado en tu OneDrive para que no se te arranquen dos jornadas.",
             ForeColor = Gris
         });
 
         // ---------------------------------------------------------- avisos
-        _aviso.SetBounds(20, 366, 300, 20);
+        _aviso.SetBounds(20, 490, 300, 20);
         _aviso.ForeColor = Color.FromArgb(164, 38, 44);
         _aviso.Text = "";
         Añadir(_aviso);
 
         // --------------------------------------------------------- botones
-        var cancelar = new Button { Bounds = new Rectangle(146, 356, 82, 30), Text = "Cancelar" };
+        var cancelar = new Button { Bounds = new Rectangle(146, 516, 82, 30), Text = "Cancelar" };
         cancelar.FlatStyle = FlatStyle.Flat;
         cancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 198, 196);
         cancelar.BackColor = Color.White;
@@ -142,7 +173,7 @@ public class DialogoAjustes : Form
         cancelar.DialogResult = DialogResult.Cancel;
         Añadir(cancelar);
 
-        _guardar.SetBounds(236, 356, 84, 30);
+        _guardar.SetBounds(236, 516, 84, 30);
         _guardar.Text = "Guardar";
         _guardar.FlatStyle = FlatStyle.Flat;
         _guardar.FlatAppearance.BorderSize = 0;
@@ -156,7 +187,7 @@ public class DialogoAjustes : Form
         // Enlace discreto abajo a la izquierda, para no competir con Guardar/Cancelar.
         var acerca = new LinkLabel
         {
-            Bounds = new Rectangle(20, 362, 110, 20),
+            Bounds = new Rectangle(20, 522, 110, 20),
             Text = "Acerca de",
             LinkColor = Gris,
             LinkBehavior = LinkBehavior.HoverUnderline,
@@ -222,6 +253,17 @@ public class DialogoAjustes : Form
         _ajustes.FicharAlDesbloquear = _autoFichaje.Checked;
 
         _ajustes.SincronizarEntreEquipos = _sincronizar.Checked;
+        _ajustes.AvisoMinutos = (int)_avisoMinutos.Value;
+        _ajustes.ArrancarMinimizado = _minimizado.Checked;
+
+        // El acceso directo se crea o se borra aquí. Si falla no se impide guardar el resto:
+        // un problema con la carpeta de Inicio no debe tirar por tierra los demás ajustes.
+        var fallo = ArranqueWindows.Establecer(_arrancar.Checked, _minimizado.Checked);
+        if (fallo is not null)
+            MessageBox.Show(this,
+                "Los ajustes se han guardado, pero no se pudo cambiar el arranque con Windows:"
+                + Environment.NewLine + fallo,
+                "Arranque con Windows", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
         _ajustes.Guardar();
         DialogResult = DialogResult.OK;

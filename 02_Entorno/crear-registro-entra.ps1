@@ -8,13 +8,20 @@
 
       - isFallbackPublicClient = true   ("Permitir flujos de cliente publico" en el portal).
                                         Sin esto, el codigo de dispositivo falla con AADSTS7000218.
-      - Permiso DELEGADO Presence.ReadWrite sobre Microsoft Graph.
+      - Permisos DELEGADOS sobre Microsoft Graph:
+          * Presence.ReadWrite        cambiar la presencia propia en Teams
+          * Files.ReadWrite.AppFolder carpeta propia en OneDrive, para compartir el estado
+                                      entre equipos (ADR-009). Solo alcanza a esa carpeta.
       - URI de redireccion de aplicacion movil y de escritorio.
 
-    El id del permiso delegado NO se hardcodea: se busca en el service principal de Graph.
+    Los ids de los permisos NO se hardcodean: se buscan en el service principal de Graph.
 
-    Es idempotente: si ya existe un registro con el mismo displayName, no crea otro; te devuelve
-    el que hay.
+    Es idempotente en los dos sentidos: si no existe el registro lo crea, y si existe le ANADE
+    los permisos que le falten sin tocar nada mas. Ejecutarlo dos veces no hace dano.
+
+    Declarar un permiso aqui no concede el consentimiento: la aplicacion lo pide sola la primera
+    vez (consentimiento dinamico). Esto sirve para dejar constancia y para que un administrador
+    pueda concederlo a toda la organizacion si algun dia hiciera falta.
 
 .NOTES
     Requiere el modulo Microsoft.Graph.Authentication y permiso para registrar aplicaciones en el
@@ -41,7 +48,10 @@ $ErrorActionPreference = 'Stop'
 
 # Identificadores fijos de Microsoft, no son secretos ni cambian.
 $GraphAppId    = "00000003-0000-0000-c000-000000000000"
-$PermisoBuscado = "Presence.ReadWrite"
+$PermisosBuscados = @(
+    "Presence.ReadWrite",         # cambiar la presencia propia en Teams
+    "Files.ReadWrite.AppFolder"   # carpeta propia en OneDrive: estado compartido entre equipos
+)
 $RedirectUri   = "https://login.microsoftonline.com/common/oauth2/nativeclient"
 
 # ---------------------------------------------------------------- modulo
@@ -78,27 +88,65 @@ $filtro = [uri]::EscapeDataString("displayName eq '$NombreApp'")
 $existe = Invoke-MgGraphRequest -Method GET -OutputType PSObject `
     -Uri ('https://graph.microsoft.com/v1.0/applications?$filter=' + $filtro)
 
-if ($existe.value -and $existe.value.Count -gt 0) {
-    $app = $existe.value[0]
-    Write-Host ""
-    Write-Host "Ya existia un registro llamado '$NombreApp'. No se crea otro." -ForegroundColor Yellow
-    Write-Host "ClientId: $($app.appId)" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Comprueba a mano que tiene 'Permitir flujos de cliente publico' activado."
-    return
-}
+$appExistente = if ($existe.value -and $existe.value.Count -gt 0) { $existe.value[0] } else { $null }
 
-# ---------------------------------------------------------------- permiso delegado
+# ---------------------------------------------------------------- permisos delegados
 
-Write-Host "Buscando el id del permiso delegado $PermisoBuscado..." -ForegroundColor Cyan
+Write-Host "Buscando los ids de los permisos delegados..." -ForegroundColor Cyan
 
 $graphSp = Invoke-MgGraphRequest -Method GET -OutputType PSObject `
     -Uri "https://graph.microsoft.com/v1.0/servicePrincipals(appId='$GraphAppId')"
 
-$permiso = $graphSp.oauth2PermissionScopes | Where-Object { $_.value -eq $PermisoBuscado }
+$accesos = @()
+foreach ($nombre in $PermisosBuscados) {
+    $permiso = $graphSp.oauth2PermissionScopes | Where-Object { $_.value -eq $nombre }
+    if (-not $permiso) { throw "No se encontro el permiso delegado $nombre en Microsoft Graph." }
+    Write-Host "  $nombre -> $($permiso.id)"
+    $accesos += @{ id = $permiso.id; type = "Scope" }   # Scope = delegado
+}
 
-if (-not $permiso) { throw "No se encontro el permiso delegado $PermisoBuscado en Microsoft Graph." }
-Write-Host "  $PermisoBuscado -> $($permiso.id)"
+$recursos = @(@{ resourceAppId = $GraphAppId; resourceAccess = $accesos })
+
+# ---------------------------------------------------------------- actualizacion
+
+if ($appExistente) {
+    Write-Host ""
+    Write-Host "Ya existe el registro '$NombreApp' (ClientId $($appExistente.appId))." -ForegroundColor Yellow
+
+    $actuales = @()
+    foreach ($r in $appExistente.requiredResourceAccess) {
+        if ($r.resourceAppId -eq $GraphAppId) { $actuales = @($r.resourceAccess | ForEach-Object { $_.id }) }
+    }
+    $faltan = @($accesos | Where-Object { $actuales -notcontains $_.id })
+
+    if ($faltan.Count -eq 0) {
+        Write-Host "Ya tiene declarados todos los permisos. Nada que hacer." -ForegroundColor Green
+        Write-Host ""
+        Write-Host "ClientId: $($appExistente.appId)" -ForegroundColor Green
+        return
+    }
+
+    Write-Host "Le faltan $($faltan.Count) permiso(s). Actualizando..." -ForegroundColor Cyan
+    try {
+        Invoke-MgGraphRequest -Method PATCH `
+            -Uri "https://graph.microsoft.com/v1.0/applications/$($appExistente.id)" `
+            -Body @{ requiredResourceAccess = $recursos; isFallbackPublicClient = $true } `
+            -ErrorAction Stop | Out-Null
+    }
+    catch {
+        Write-Host "No se pudo actualizar: $($_.Exception.Message)" -ForegroundColor Red
+        throw
+    }
+
+    Write-Host ""
+    Write-Host "Registro actualizado." -ForegroundColor Green
+    Write-Host "  ClientId: $($appExistente.appId)" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Nota: declarar el permiso aqui NO concede el consentimiento. La aplicacion lo pide"
+    Write-Host "sola la primera vez (consentimiento dinamico); esto sirve para dejar constancia y"
+    Write-Host "para que un administrador pueda concederlo a toda la organizacion si algun dia hace falta."
+    return
+}
 
 # ---------------------------------------------------------------- creacion
 
@@ -107,12 +155,7 @@ $body = @{
     signInAudience         = "AzureADMyOrg"    # solo cuentas de este directorio
     isFallbackPublicClient = $true             # "Permitir flujos de cliente publico"
     publicClient           = @{ redirectUris = @($RedirectUri) }
-    requiredResourceAccess = @(
-        @{
-            resourceAppId  = $GraphAppId
-            resourceAccess = @(@{ id = $permiso.id; type = "Scope" })   # Scope = delegado
-        }
-    )
+    requiredResourceAccess = $recursos
 }
 
 Write-Host "Creando el registro '$NombreApp'..." -ForegroundColor Cyan

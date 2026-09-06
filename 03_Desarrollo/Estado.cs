@@ -47,6 +47,12 @@ public static class Config
     /// en ese caso: cambiarlo no tendría efecto y sería confuso.
     /// </summary>
     public static bool JornadaForzada { get; set; }
+
+    /// <summary>
+    /// Arrancar oculto en la bandeja. Viene de <c>--minimizado</c>, que solo pone el acceso
+    /// directo de inicio: abrir la aplicación a mano siempre muestra la ventana.
+    /// </summary>
+    public static bool ArrancarMinimizado { get; set; }
 }
 
 /// <summary>
@@ -85,6 +91,22 @@ public class Ajustes
     /// pueden arrancar dos, que se pelearían por la misma presencia de Teams.
     /// </summary>
     public bool SincronizarEntreEquipos { get; set; } = true;
+
+    /// <summary>
+    /// Minutos de antelación del aviso de fin de jornada. 0 = sin aviso.
+    /// Sirve para poder cerrar cosas antes de que te cambie el estado.
+    /// </summary>
+    public int AvisoMinutos { get; set; } = 15;
+
+    /// <summary>
+    /// Arrancar en la bandeja en vez de abrir la ventana. Per-equipo, NO se sincroniza.
+    ///
+    /// <para>Nótese que NO hay un "ArrancarConWindows": la verdad sobre eso es la existencia del
+    /// acceso directo en la carpeta de Inicio (ver <see cref="ArranqueWindows"/>). El usuario
+    /// puede borrarlo desde el Administrador de tareas o del propio explorador, así que un
+    /// booleano aquí solo podría desincronizarse y mentir.</para>
+    /// </summary>
+    public bool ArrancarMinimizado { get; set; }
 
     /// <summary>Momento del último cambio, en UTC. Al sincronizar, gana el más reciente.</summary>
     public DateTimeOffset? Actualizado { get; set; }

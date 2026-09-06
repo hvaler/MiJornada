@@ -24,6 +24,10 @@ internal static class Program
             Config.JornadaForzada = true;
         }
 
+        // Lo pone el acceso directo de la carpeta de Inicio. Abrir la app a mano no lo lleva,
+        // asi que un arranque manual siempre muestra la ventana.
+        Config.ArrancarMinimizado = args.Contains("--minimizado");
+
         ApplicationConfiguration.Initialize();
         Application.Run(new MainForm());
     }

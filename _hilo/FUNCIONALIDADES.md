@@ -97,6 +97,10 @@ solo con el anillo y el botón; la configuración crece aquí sin ensuciarla.
 | Duración de la jornada | 0-23 h + 0-59 min | 7 h |
 | Al pausar, aparecer como | Ausente · Vuelvo enseguida · Ocupado · No molestar | Ausente |
 | Fichar al desbloquear el equipo | sí / no | **no** |
+| Avisar N minutos antes del final | 0-120 (0 = sin aviso) | 15 |
+| Arrancar con Windows | sí / no | **no** |
+| ...y hacerlo en la bandeja | sí / no | no |
+| Compartir la jornada entre equipos | sí / no | **sí** |
 
 - Se persisten en `%APPDATA%/MiJornada/ajustes.json`, **fichero aparte de `estado.json`**:
   cancelar una jornada no debe olvidar que tu jornada dura 6 horas.
@@ -182,6 +186,28 @@ Detalles tecnicos que no son opcionales:
 | **Desbloquear**, resto del dia | Nada. Volver del cafe no vuelve a fichar |
 | **Suspender / hibernar** | Nada especial: al volver, la resta contra el reloj real da el valor correcto (PAT-001) |
 
+### M13 — Arranque con Windows
+
+**Fichero**: `ArranqueWindows.cs` · **Estado**: verificado 2026-09-06
+
+Acceso directo en la carpeta de Inicio del usuario, creado por COM tardio (`WScript.Shell`) para
+no anadir dependencias a un proyecto que solo tiene dos paquetes.
+
+**Se usa la carpeta de Inicio y no la clave `Run` del registro a proposito**: es visible, el
+usuario puede verla y borrarla, Windows la lista en el Administrador de tareas junto al resto de
+aplicaciones de inicio, y no hace falta ningun permiso especial.
+
+**No hay un ajuste booleano "ArrancarConWindows"**: la verdad es la existencia del `.lnk`. El
+usuario puede borrarlo desde el Administrador de tareas, asi que un booleano guardado solo podria
+desincronizarse y mentir. La casilla lee el fichero.
+
+Con `--minimizado` (que solo lleva el acceso directo, no el arranque manual) la aplicacion va
+directa a la bandeja. **Importa para el fichaje automatico**: si la aplicacion no esta corriendo,
+nadie escucha el desbloqueo de sesion.
+
+Verificado: la casilla crea el `.lnk` con destino, argumento `--minimizado` e icono correctos, y
+al desmarcarla lo borra.
+
 ### M12 — Estado compartido entre equipos
 
 **Ficheros**: `SincronizacionGraph.cs`, `GraphService.cs` · **Estado**: verificado 2026-09-06
@@ -244,8 +270,15 @@ Lo tachado ya esta hecho.
 - ~~**Icono propio**~~ — HECHO 2026-09-06 (M8).
 - ~~**Duracion configurable**~~ y ~~**ajustes persistidos**~~ — HECHO 2026-09-06 (M7).
 - ~~**Icono de bandeja dinamico**~~ — HECHO 2026-09-06 (M9).
-- **Mas ajustes**, ya que hay dialogo donde ponerlos: arranque minimizado, aviso antes del final,
-  franja horaria en la que el fichaje automatico puede saltar.
+- ~~**Aviso antes del final**~~ y ~~**arranque con Windows / minimizado**~~ — HECHO 2026-09-06.
+- **Duracion por dia de la semana**: los viernes de jornada corta son la norma. Pendiente de
+  decidir la forma en la interfaz.
+- **Franja horaria** en la que el fichaje automatico puede saltar: hoy, un desbloqueo a las 3 de
+  la manana ficha.
+- **Saltar fines de semana y festivos.**
+- **INSTALADOR**: todo lo que hoy se hace a mano deberia hacerlo el (crear/actualizar el registro
+  de Entra con `02_Entorno/crear-registro-entra.ps1`, colocar el .exe, el acceso directo de
+  inicio). Es el siguiente salto de usabilidad si esto lo va a usar alguien mas.
 
 **Funcionalidad**
 

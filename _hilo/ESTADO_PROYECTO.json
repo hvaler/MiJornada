@@ -127,7 +127,7 @@
       "produccion"
     ],
     "sprint_actual": null,
-    "version_actual": "0.6.0",
+    "version_actual": "0.7.0",
     "ultima_actualizacion": "2026-09-06",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
@@ -264,7 +264,7 @@
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
-    "proximoPaso": "Anadir Files.ReadWrite.AppFolder al registro de Entra por higiene. Despues, los ajustes pendientes: duracion por dia de la semana, aviso antes del final, arrancar con Windows.",
+    "proximoPaso": "Decidir la forma de la duracion por dia de la semana. Despues: franja horaria del fichaje automatico, saltar fines de semana, y a medio plazo un INSTALADOR que haga el registro de Entra y el despliegue.",
     "resumenSesion": "Sesion larga: onboarding al ecosistema, repositorio en GitHub, primer build, registro propio en Entra, verificacion funcional completa contra Graph, y cuatro entradas del backlog implementadas (icono propio, ajustes en dialogo, icono de bandeja dinamico y fichaje automatico al desbloquear).",
     "archivosModificados": [
       "03_Desarrollo/DialogoAjustes.cs",

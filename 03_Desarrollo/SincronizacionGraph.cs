@@ -173,9 +173,13 @@ public class SincronizacionGraph
             local.PausaDisponibilidad = remoto.PausaDisponibilidad;
             local.FicharAlDesbloquear = remoto.FicharAlDesbloquear;
             local.UltimoAutoFichaje = remoto.UltimoAutoFichaje;
+            local.AvisoMinutos = remoto.AvisoMinutos;
             local.Actualizado = remoto.Actualizado;
-            // Ojo: SincronizarEntreEquipos NO se copia. Es la decisión de este equipo sobre si
-            // participar; traerla de fuera permitiría que otro equipo lo desactivara aquí.
+            // NO se copian los ajustes per-equipo:
+            //  - SincronizarEntreEquipos: la decisión de este equipo sobre si participar;
+            //    traerla de fuera permitiría que otro equipo lo desactivara aquí.
+            //  - ArrancarMinimizado: acompaña al acceso directo de la carpeta de Inicio de
+            //    ESTA máquina. Copiarlo describiría un arranque que en el otro equipo no existe.
             local.Guardar(sellar: false);
             return true;
         }
