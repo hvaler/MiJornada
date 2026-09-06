@@ -94,7 +94,8 @@ solo con el anillo y el botón; la configuración crece aquí sin ensuciarla.
 
 | Ajuste | Valores | Por defecto |
 |---|---|---|
-| Duración de la jornada | 0-23 h + 0-59 min | 7 h |
+| Duración general de la jornada | 0-23 h + 0-59 min | 7 h |
+| Duración por día de la semana | excepción opcional para cada uno de los 7 días | sin excepciones |
 | Al pausar, aparecer como | Ausente · Vuelvo enseguida · Ocupado · No molestar | Ausente |
 | Fichar al desbloquear el equipo | sí / no | **no** |
 | Avisar N minutos antes del final | 0-120 (0 = sin aviso) | 15 |
@@ -186,6 +187,29 @@ Detalles tecnicos que no son opcionales:
 | **Desbloquear**, resto del dia | Nada. Volver del cafe no vuelve a fichar |
 | **Suspender / hibernar** | Nada especial: al volver, la resta contra el reloj real da el valor correcto (PAT-001) |
 
+### M14 — Duracion por dia de la semana
+
+**Ficheros**: `Ajustes.DuracionPorDia`, `Estado.DuracionMinutos`, `DialogoAjustes` · **Estado**: verificado 2026-09-06
+
+Una duracion general y, opcionalmente, una **excepcion para cada uno de los siete dias**. Un dia
+sin excepcion usa la general.
+
+- Las excepciones se guardan con el **nombre invariante** de `DayOfWeek` (`"Friday"`), no el
+  traducido: la aplicacion puede correr en equipos con idioma distinto y el fichero viaja entre
+  ellos por OneDrive.
+- Solo se guardan los dias marcados; los demas ni aparecen en el JSON.
+- La duracion se resuelve **al fichar**, con el dia real: si la aplicacion lleva abierta desde
+  ayer, la de ayer no vale.
+
+**Cambio importante que trae esto**: `Estado` ahora guarda `DuracionMinutos`, la duracion **con
+la que arranco esa jornada**. El anillo se calcula contra ella y no contra la configurada hoy.
+Eso arregla de paso el riesgo que ya estaba documentado en `DEPENDENCIAS.md` — cambiar la
+duracion con una jornada abierta descuadraba el anillo — y ademas hace correcto el caso nuevo:
+una jornada iniciada en otro equipo con otra configuracion se dibuja bien aqui.
+
+**Verificado**: con general 420 min y excepcion de domingo 90 min, fichar un domingo produjo una
+jornada de 90 min (`estado.DuracionMinutos = 90`), no de 420.
+
 ### M13 — Arranque con Windows
 
 **Fichero**: `ArranqueWindows.cs` · **Estado**: verificado 2026-09-06
@@ -271,8 +295,7 @@ Lo tachado ya esta hecho.
 - ~~**Duracion configurable**~~ y ~~**ajustes persistidos**~~ — HECHO 2026-09-06 (M7).
 - ~~**Icono de bandeja dinamico**~~ — HECHO 2026-09-06 (M9).
 - ~~**Aviso antes del final**~~ y ~~**arranque con Windows / minimizado**~~ — HECHO 2026-09-06.
-- **Duracion por dia de la semana**: los viernes de jornada corta son la norma. Pendiente de
-  decidir la forma en la interfaz.
+- ~~**Duracion por dia de la semana**~~ — HECHO 2026-09-06, con las siete y en pestañas.
 - **Franja horaria** en la que el fichaje automatico puede saltar: hoy, un desbloqueo a las 3 de
   la manana ficha.
 - **Saltar fines de semana y festivos.**

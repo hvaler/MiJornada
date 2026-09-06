@@ -239,7 +239,7 @@ public class MainForm : Form
             if (!_ajustes.SincronizarEntreEquipos) { ActualizarIndicadorSync(); return; }
 
             if (await Sync.TraerAjustesAsync(_ajustes) && !Config.JornadaForzada)
-                Config.Jornada = _ajustes.Duracion;
+                Config.Jornada = _ajustes.DuracionDe(DateTimeOffset.Now.DayOfWeek);
 
             var r = await Sync.TraerEstadoAsync(_estado, _ajustes);
 
@@ -315,7 +315,8 @@ public class MainForm : Form
             if (dlg.ShowDialog(this) != DialogResult.OK) return;
 
             // --minutos manda sobre los ajustes mientras dure esta ejecución.
-            if (!Config.JornadaForzada) Config.Jornada = _ajustes.Duracion;
+            if (!Config.JornadaForzada)
+                Config.Jornada = _ajustes.DuracionDe(DateTimeOffset.Now.DayOfWeek);
 
             // Devolver el foco al botón principal: si no, el engranaje se queda con el
             // rectángulo de foco dibujado encima.
@@ -492,8 +493,16 @@ public class MainForm : Form
 
         if (!await CambiarPresenciaAsync("Available", "Available")) return false;
 
+        // La duracion se resuelve AQUI, con el dia en que realmente se ficha: si la aplicacion
+        // lleva abierta desde ayer, Config.Jornada podria ser la de ayer.
+        var duracion = Config.JornadaForzada
+            ? Config.Jornada
+            : _ajustes.DuracionDe(DateTimeOffset.Now.DayOfWeek);
+        Config.Jornada = duracion;
+
         _estado.Situacion = EstadoJornada.Activa;
-        _estado.Fin = DateTimeOffset.Now + Config.Jornada;
+        _estado.DuracionMinutos = (int)Math.Round(duracion.TotalMinutes);
+        _estado.Fin = DateTimeOffset.Now + duracion;
         _estado.PausaDesde = null;
         _estado.Guardar();
         Refrescar();

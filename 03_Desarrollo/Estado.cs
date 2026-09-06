@@ -62,8 +62,16 @@ public static class Config
 /// </summary>
 public class Ajustes
 {
-    /// <summary>Duración de la jornada en minutos. 420 = 7 h.</summary>
+    /// <summary>Duración general de la jornada en minutos. 420 = 7 h.</summary>
     public int DuracionMinutos { get; set; } = 420;
+
+    /// <summary>
+    /// Excepciones por día de la semana, en minutos. La clave es el nombre invariante de
+    /// <see cref="DayOfWeek"/> (<c>"Monday"</c>, <c>"Friday"</c>...), no el traducido: la
+    /// aplicación puede correr en equipos con idioma distinto y el fichero viaja entre ellos.
+    /// Un día que no esté aquí usa la duración general.
+    /// </summary>
+    public Dictionary<string, int> DuracionPorDia { get; set; } = new();
 
     /// <summary>
     /// Presencia que se pone al pausar. Se guarda la clave de Graph, no la etiqueta traducida,
@@ -113,6 +121,12 @@ public class Ajustes
 
     [JsonIgnore]
     public TimeSpan Duracion => TimeSpan.FromMinutes(Math.Clamp(DuracionMinutos, 1, 24 * 60));
+
+    /// <summary>Duración que toca ese día: la excepción si la hay, y si no la general.</summary>
+    public TimeSpan DuracionDe(DayOfWeek dia) =>
+        DuracionPorDia.TryGetValue(dia.ToString(), out var m) && m >= 1
+            ? TimeSpan.FromMinutes(Math.Clamp(m, 1, 24 * 60))
+            : Duracion;
 
     /// <summary>Opción de pausa correspondiente, o Ausente si lo guardado ya no existe.</summary>
     [JsonIgnore]
@@ -231,6 +245,14 @@ public class Estado
     public DateTimeOffset? Fin { get; set; }
     public DateTimeOffset? PausaDesde { get; set; }
 
+    /// <summary>
+    /// Duración con la que arrancó ESTA jornada, en minutos. Se guarda aquí y no se recalcula
+    /// de los ajustes para que el anillo sea correcto aunque la duración cambie a mitad —o
+    /// aunque la jornada la iniciara otro equipo con otra configuración—. 0 = desconocida
+    /// (estados escritos antes de existir este campo): en ese caso se usa Config.Jornada.
+    /// </summary>
+    public int DuracionMinutos { get; set; }
+
     /// <summary>Equipo que hizo el último cambio, para poder decir "iniciada en PORTATIL-HUGO".</summary>
     public string? Dispositivo { get; set; }
 
@@ -257,11 +279,16 @@ public class Estado
         }
     }
 
+    /// <summary>Duración de referencia del anillo: la de esta jornada, no la configurada hoy.</summary>
+    [JsonIgnore]
+    public TimeSpan DuracionJornada =>
+        DuracionMinutos >= 1 ? TimeSpan.FromMinutes(DuracionMinutos) : Config.Jornada;
+
     [JsonIgnore]
     public double Fraccion =>
-        Config.Jornada.TotalSeconds <= 0
+        DuracionJornada.TotalSeconds <= 0
             ? 0
-            : Math.Clamp(Restante.TotalSeconds / Config.Jornada.TotalSeconds, 0, 1);
+            : Math.Clamp(Restante.TotalSeconds / DuracionJornada.TotalSeconds, 0, 1);
 
     // ---------------------------------------------------------------- persistencia
 
@@ -304,6 +331,7 @@ public class Estado
     {
         Esquema = otro.Esquema;
         Situacion = otro.Situacion;
+        DuracionMinutos = otro.DuracionMinutos;
         Fin = otro.Fin;
         PausaDesde = otro.PausaDesde;
         Dispositivo = otro.Dispositivo;

@@ -13,7 +13,8 @@ internal static class Program
             Rutas.Redirigir(args[d + 1]);
 
         // La duración habitual sale de los ajustes del usuario...
-        Config.Jornada = Ajustes.Cargar().Duracion;
+        // Duracion del dia de hoy: puede haber una excepcion configurada para este dia.
+        Config.Jornada = Ajustes.Cargar().DuracionDe(DateTimeOffset.Now.DayOfWeek);
 
         // ...pero --minutos N manda sobre ella, para poder probar sin tocar los ajustes:
         //    MiJornada.exe --minutos 2
