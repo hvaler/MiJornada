@@ -45,6 +45,7 @@ public class DialogoAjustes : Form
     private readonly DateTimePicker _hasta = new();
     private readonly CheckBox _soloLaborables = new();
     private readonly TextBox _festivos = new();
+    private readonly CheckBox _animo = new();
     private readonly Label _aviso = new();
     private readonly Button _guardar = new();
     private readonly ToolTip _pista = new();
@@ -231,7 +232,14 @@ public class DialogoAjustes : Form
         _avisoMinutos.Value = Math.Clamp(_ajustes.AvisoMinutos, 0, 120);
         _pista.SetToolTip(_avisoMinutos, "0 = sin aviso");
 
-        p.Controls.Add(Texto(16, 178, 330, "Un globo para poder cerrar cosas. 0 lo desactiva."));
+        p.Controls.Add(Texto(16, 178, 330, "Un globo para poder cerrar cosas. 0 lo desactiva.", null, 22));
+
+        p.Controls.Add(Negrita(16, 214, 320, "Mensajes"));
+        _animo.SetBounds(16, 240, 330, 22);
+        _animo.Text = "Un mensaje de ánimo al empezar y terminar";
+        _animo.ForeColor = Tinta;
+        _animo.Checked = _ajustes.MensajesDeAnimo;
+        p.Controls.Add(_animo);
 
         return p;
     }
@@ -470,6 +478,7 @@ public class DialogoAjustes : Form
         _ajustes.AutoFichajeHasta = _hasta.Value.ToString("HH:mm",
             System.Globalization.CultureInfo.InvariantCulture);
         _ajustes.AutoFichajeSoloLaborables = _soloLaborables.Checked;
+        _ajustes.MensajesDeAnimo = _animo.Checked;
         _ajustes.Festivos = FestivosValidos();
         _ajustes.ArrancarMinimizado = _minimizado.Checked;
 

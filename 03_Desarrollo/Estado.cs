@@ -102,6 +102,12 @@ public class Ajustes
     /// <inheritdoc cref="AutoFichajeDesde"/>
     public string AutoFichajeHasta { get; set; } = "11:00";
 
+    /// <summary>
+    /// Globo con un mensaje de ánimo al empezar y al terminar. Activado por defecto, pero con
+    /// interruptor: los gustos varían y esto se lee un par de cientos de veces al año.
+    /// </summary>
+    public bool MensajesDeAnimo { get; set; } = true;
+
     /// <summary>No fichar solo los sábados ni los domingos.</summary>
     public bool AutoFichajeSoloLaborables { get; set; } = true;
 

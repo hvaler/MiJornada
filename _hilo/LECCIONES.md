@@ -510,6 +510,36 @@ automatizacion se atasca con los dialogos modales.
 
 **Fecha**: 2026-09-06
 
+### TEC-016: Con No molestar, Windows descarta los globos de bandeja (no los aplaza)
+
+`NotifyIcon.ShowBalloonTip` es la forma obvia de notificar desde una aplicacion de bandeja y, con
+**No molestar** activado, **no muestra nada y no deja rastro**: el aviso no aparece y **tampoco
+llega al centro de notificaciones**. No es un aplazamiento, es un descarte.
+
+Como se diagnostico, que es la parte reutilizable:
+
+1. La captura de pantalla no mostraba globo. Enumerar ventanas de clase `tooltips_class32`
+   devolvia cero — en Windows 10/11 el globo ya no es un tooltip clasico, asi que **esa via no
+   sirve ni para confirmar ni para descartar**.
+2. Se descarto que fuera una carrera al registrar el icono (`Visible = true` inmediatamente antes
+   del globo) reproduciendolo con un `NotifyIcon` **suelto, fuera de la aplicacion**, con y sin
+   espera. Ninguna de las dos variantes salio: el codigo no era el culpable.
+3. Se abrio el centro de notificaciones (Win+N) y se capturo: decia **"No molestar activado"** y
+   la entrada mas reciente era de 40 minutos antes de la prueba. Prueba directa del descarte.
+4. El indicador esta a la vista todo el tiempo: el icono de campana con "Zz" en el extremo de la
+   barra de tareas. **Mirarlo antes de investigar** habria ahorrado el resto.
+
+La leccion general: **antes de dar por bueno un mecanismo de notificacion del sistema, comprobarlo
+con No molestar puesto**, que es el estado en el que mucha gente vive. Y si hace falta que el aviso
+se vea si o si, la unica via fiable es **una ventana propia** (`Aviso.cs`): no pasa por el filtro
+del sistema. Para que sea de verdad no bloqueante necesita `ShowWithoutActivation` **y**
+`WS_EX_NOACTIVATE`; solo con el primero se lleva el foco al pulsarla.
+
+Efecto lateral util del mismo hallazgo: **GDI pinta Segoe UI Emoji en monocromo** (no entiende sus
+tablas de color), asi que los emoji hay que elegirlos por su silueta. Ver M16.
+
+**Fecha**: 2026-09-06
+
 ---
 
 ## 4. Preferencias del proyecto

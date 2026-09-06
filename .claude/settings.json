@@ -1,6 +1,6 @@
 {
   "companyAnnouncements": [
-    "Ovillo v1.1.0 | modo: puesta_a_punto\nMCPs: dotnet/skills | Falta: Roslyn, Context7\n/sos para ayuda rapida"
+    "Ovillo v1.1.0 | Mi jornada | rama: main | modo: desarrollo\nMCPs: dotnet/skills | Falta: Roslyn, Context7\n/sos para ayuda rapida"
   ],
   "hooks": {
     "SessionStart": [

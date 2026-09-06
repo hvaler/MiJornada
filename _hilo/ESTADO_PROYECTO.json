@@ -127,7 +127,7 @@
       "produccion"
     ],
     "sprint_actual": null,
-    "version_actual": "0.9.0",
+    "version_actual": "0.10.0",
     "ultima_actualizacion": "2026-09-06",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
@@ -290,7 +290,8 @@
     "_doc": "Claude muestra estas alertas al iniciar sesion",
     "activas": [
       "Estado compartido entre equipos activo (ADR-009). Al abrir la app en un equipo nuevo pedira consentimiento una vez: el conjunto de scopes cambio (se anadio Files.ReadWrite.AppFolder).",
-      "Sin verificar: el cierre de jornada por vencimiento desde otro equipo, el fichaje automatico al desbloquear (Win+L), DT-007 (parpadeo) y el globo de notificacion."
+      "Sin verificar: el cierre de jornada por vencimiento desde otro equipo, el fichaje automatico al desbloquear (Win+L) y DT-007 (parpadeo).",
+      "Los avisos NO usan globos de bandeja: con No molestar activado Windows los descarta sin dejar rastro (ni llegan al centro de notificaciones). Se usa una ventana propia, Aviso.cs. Comprobado en HUGOVALER el 2026-09-06."
     ]
   },
   "historial_modos": [

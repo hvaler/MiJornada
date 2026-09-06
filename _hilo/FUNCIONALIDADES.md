@@ -4,9 +4,9 @@
 > **Leer (Read) antes de modificar una funcionalidad documentada**; actualizar tras implementar
 > una nueva.
 
-> **Estado a 2026-09-06**: verificado funcionalmente contra Microsoft Graph. Lo unico sin
-> comprobar son dos detalles visuales que necesitan una persona mirando la pantalla: el parpadeo
-> del anillo (DT-007) y el globo de notificacion al terminar.
+> **Estado a 2026-09-06**: verificado funcionalmente contra Microsoft Graph. Los avisos de inicio
+> y fin (M16) estan verificados en pantalla. Lo unico sin comprobar es el parpadeo del anillo
+> (DT-007), que necesita una persona mirando.
 
 ---
 
@@ -35,7 +35,7 @@ Tres situaciones: `SinFichar`, `Activa`, `Pausada`.
 | **Pausar** | Congela el restante y pone la presencia elegida en Ajustes (`Ausente` por defecto). La hora de fin **no** se toca |
 | **Reanudar** | Desplaza la hora de fin por los minutos parados y vuelve a `Available` |
 | **Cancelar jornada** | Con confirmacion. Cierra y pone `Offline`/`OffWork` |
-| **Fin de la cuenta atras** | Presencia a `Offline`/`OffWork` y globo de notificacion |
+| **Fin de la cuenta atras** | Presencia a `Offline`/`OffWork` y aviso con mensaje (M16) |
 
 **Regla central**: el restante es **siempre una resta contra el reloj real**, nunca un contador
 que se decrementa. Durante la pausa la referencia es `PausaDesde` en lugar de `DateTime.Now`; eso
@@ -293,6 +293,46 @@ OneDrive). Ver **ADR-009** para el porque y las alternativas descartadas.
 
 **Sin verificar todavia**: el cierre por vencimiento desde el otro equipo. Usa la misma ruta de
 publicacion que la pausa, ya verificada, pero no se ha ejercitado.
+
+### M16 — Avisos con mensaje de animo
+
+**Ficheros**: `Aviso.cs`, `Mensajes.cs` · **Estado**: verificado 2026-09-06
+
+Al empezar y al terminar la jornada aparece un aviso no bloqueante con un mensaje corto y un
+emoji, elegido al azar entre doce de cada tipo. Se desactiva en Ajustes > Presencia
+(`MensajesDeAnimo`, marcado por defecto); los avisos **funcionales** —el de "a punto de terminar"
+y el de "sigue en marcha en la bandeja"— no dependen de esa casilla y salen siempre.
+
+**Lo importante de este modulo no es el mensaje, es el mecanismo.** La primera version usaba
+`NotifyIcon.ShowBalloonTip`, que es lo obvio y resulto ser inservible:
+
+> Con **No molestar** activado, Windows **descarta** los globos de bandeja. No los aplaza ni los
+> guarda: no aparecen y **tampoco figuran en el centro de notificaciones**. Comprobado en
+> HUGOVALER — los avisos de las 16:24 y 16:26 no salieron y la lista del centro seguia con la
+> entrada anterior, de las 15:57. Se descarto que fuera un problema de registro del icono
+> reproduciendolo con un `NotifyIcon` suelto, fuera de la aplicacion.
+
+Como No molestar suele estar puesto justo cuando mas se usa esto (reuniones, pantalla
+compartida), la funcionalidad habria sido invisible casi siempre. Por eso `Aviso` es una **ventana
+propia** de la aplicacion —tarjeta en la esquina inferior derecha, borde morado, se va sola— que
+no pasa por el filtro del sistema. No es colarse por la puerta de atras: el aviso lo pide el
+propio usuario al fichar, dura segundos, no suena y **no roba el foco**
+(`ShowWithoutActivation` + `WS_EX_NOACTIVATE`), que es la otra mitad de "no bloqueante".
+
+Detalles que no son evidentes:
+
+- **Los emoji se eligen para verse en blanco y negro.** GDI no entiende las tablas de color de
+  Segoe UI Emoji, asi que todo sale en silueta monocroma. Los pictogramas que son una escena
+  dentro de un cuadrado (🌅 🌇 🌆) o una forma sin contorno claro (🌊 🌤️) se convierten en un
+  borron; los que son silueta reconocible (🚀 🎯 🔔 🏁 ⏱️ 🚦) se ven perfectos. Se renderizaron
+  los 38 candidatos y se cambiaron cinco. **Antes de anadir un emoji, hay que verlo en monocromo**
+  — en color enganan todos.
+- **Sin repetir dos veces seguidas** (`Mensajes.Elegir`): con doce mensajes, el azar puro repite
+  dos dias de cada doce, y ahi es donde un detalle simpatico empieza a parecer un bucle.
+- **La tarjeta se mide, no se asume** (TEC-014): el alto sale de `TextRenderer.MeasureText` con
+  las mismas banderas con las que se pinta. Los 24 mensajes caben en una linea, el mas ancho en
+  282 px de los 312 utiles.
+- **Se apilan** hacia arriba y, al cerrarse una, las de encima bajan a ocupar el hueco.
 
 ### M11 — Acerca de
 

@@ -215,14 +215,12 @@ public class MainForm : Form
             _ajustes.UltimoAutoFichaje = DateTime.Today;
             _ajustes.Guardar();
 
-            // Solo se avisa si la ventana no está a la vista: si lo está, ya se ve la cuenta
-            // atrás corriendo y un globo sobraría (además dejaría el icono de bandeja puesto).
-            if (!Visible)
-            {
-                _tray.Visible = true;
-                _tray.ShowBalloonTip(5000, "Jornada iniciada",
-                    $"Estás disponible. Termina a las {_estado.Fin:HH:mm}.", ToolTipIcon.Info);
-            }
+            // IniciarAsync ya ha notificado el arranque. Aqui solo se anade el detalle de que
+            // ha sido automatico, y solo si la ventana no esta a la vista: si lo esta, la cuenta
+            // atras ya se ve corriendo.
+            if (!Visible && !_ajustes.MensajesDeAnimo)
+                Notificar("Jornada iniciada sola",
+                    $"Al desbloquear el equipo. Termina a las {_estado.Fin:HH:mm}.");
         }
         catch (Exception ex)
         {
@@ -513,8 +511,13 @@ public class MainForm : Form
         _estado.Fin = DateTimeOffset.Now + duracion;
         _estado.PausaDesde = null;
         _estado.Guardar();
+        _finAvisado = null;   // jornada nueva: el aviso previo vuelve a estar pendiente
         Refrescar();
         await PublicarAsync();
+
+        if (_ajustes.MensajesDeAnimo)
+            Notificar("Jornada iniciada", Mensajes.Inicio());
+
         return true;
     }
 
@@ -585,9 +588,9 @@ public class MainForm : Form
                     await CambiarPresenciaAsync("Offline", "OffWork");
                     await PublicarAsync();
 
-                    _tray.Visible = true;
-                    _tray.ShowBalloonTip(5000, "Jornada finalizada",
-                        "Tu estado ha cambiado a Fuera del trabajo.", ToolTipIcon.Info);
+                    Notificar("Jornada finalizada", _ajustes.MensajesDeAnimo
+                        ? Mensajes.Fin()
+                        : "Tu estado ha cambiado a Fuera del trabajo.");
                 }
                 finally
                 {
@@ -607,6 +610,16 @@ public class MainForm : Form
     }
 
     /// <summary>
+    /// Aviso propio en la esquina, no bloqueante: aparece, se va solo y no roba el foco. Al
+    /// pulsarlo se abre la ventana, que es lo unico que se puede querer hacer con el.
+    ///
+    /// <para>Se usa una ventana propia y no <c>ShowBalloonTip</c> porque el modo <b>No molestar</b>
+    /// de Windows descarta los globos de bandeja sin dejar rastro — ver <see cref="Aviso"/>.</para>
+    /// </summary>
+    private void Notificar(string titulo, string mensaje, int milisegundos = 6000) =>
+        Aviso.Mostrar(titulo, mensaje, milisegundos, Restaurar);
+
+    /// <summary>
     /// Globo de aviso a N minutos del final, para poder cerrar cosas antes de que cambie el
     /// estado. Se avisa una sola vez por hora de fin.
     /// </summary>
@@ -621,10 +634,9 @@ public class MainForm : Form
         if (restante > TimeSpan.FromMinutes(_ajustes.AvisoMinutos)) return;
 
         _finAvisado = _estado.Fin;
-        _tray.Visible = true;
-        _tray.ShowBalloonTip(8000, "La jornada está a punto de terminar",
+        Notificar("La jornada está a punto de terminar",
             $"Quedan {Math.Ceiling(restante.TotalMinutes):0} min. A las {_estado.Fin:HH:mm} " +
-            "pasarás a Fuera del trabajo.", ToolTipIcon.Info);
+            "pasarás a Fuera del trabajo.", 8000);
     }
 
     private async Task<bool> CambiarPresenciaAsync(string disponibilidad, string actividad)
@@ -685,8 +697,8 @@ public class MainForm : Form
             e.Cancel = true;
             Hide();
             _tray.Visible = true;
-            _tray.ShowBalloonTip(3000, "Mi jornada",
-                "Sigue contando aquí abajo. Doble clic para volver.", ToolTipIcon.Info);
+            Notificar("Mi jornada sigue en marcha",
+                "Sigue contando en la bandeja. Doble clic en el icono para volver.", 4000);
             return;
         }
 
