@@ -173,6 +173,27 @@ Detalles tecnicos que no son opcionales:
 
 **Como probarlo**: activar la casilla en Ajustes, bloquear con Win+L y desbloquear.
 
+**Que hace y que NO hace Win+L**:
+
+| Evento | Comportamiento |
+|---|---|
+| **Bloquear** (Win+L) | **Nada.** La jornada sigue contando. Bloquear el equipo no significa dejar de trabajar |
+| **Desbloquear**, primera vez del dia | Ficha, si el ajuste esta activo y no hay jornada en marcha |
+| **Desbloquear**, resto del dia | Nada. Volver del cafe no vuelve a fichar |
+| **Suspender / hibernar** | Nada especial: al volver, la resta contra el reloj real da el valor correcto (PAT-001) |
+
+### M11 — Acerca de
+
+**Fichero**: `DialogoAcercaDe.cs` · **Estado**: verificado 2026-09-06
+
+Version y, sobre todo, los datos que hacen falta para diagnosticar: ClientId del registro de
+Entra, tenant, permiso solicitado y un enlace que abre la carpeta de datos.
+
+El ClientId y el tenant van en cuadros de texto **seleccionables**: son lo primero que se pide en
+cualquier consulta de soporte, y copiarlos a mano de una captura es innecesariamente molesto.
+
+Se llega desde dos sitios: el menu de la bandeja y un enlace discreto en Ajustes.
+
 ---
 
 ## Funcionalidades criticas (no pueden fallar)

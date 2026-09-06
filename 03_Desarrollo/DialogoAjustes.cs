@@ -130,6 +130,18 @@ public class DialogoAjustes : Form
         _guardar.Click += Guardar_Click;
         Añadir(_guardar);
 
+        // Enlace discreto abajo a la izquierda, para no competir con Guardar/Cancelar.
+        var acerca = new LinkLabel
+        {
+            Bounds = new Rectangle(20, 308, 110, 20),
+            Text = "Acerca de",
+            LinkColor = Gris,
+            LinkBehavior = LinkBehavior.HoverUnderline,
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+        acerca.Click += (_, _) => { using var d = new DialogoAcercaDe(); d.ShowDialog(this); };
+        Añadir(acerca);
+
         AcceptButton = _guardar;
         CancelButton = cancelar;
 

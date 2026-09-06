@@ -115,6 +115,8 @@ public class MainForm : Form
         _tray.DoubleClick += (_, _) => Restaurar();
         var menu = new ContextMenuStrip();
         menu.Items.Add("Abrir", null, (_, _) => Restaurar());
+        menu.Items.Add("Acerca de", null, (_, _) => MostrarAcercaDe());
+        menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Salir", null, (_, _) => { _cerrandoDeVerdad = true; Close(); });
         _tray.ContextMenuStrip = menu;
 
@@ -182,6 +184,16 @@ public class MainForm : Form
     }
 
     // ------------------------------------------------------------------ ajustes
+
+    /// <summary>Accesible desde el menu de la bandeja y desde el dialogo de ajustes.</summary>
+    internal void MostrarAcercaDe()
+    {
+        // Si la ventana esta oculta en la bandeja, se muestra centrado en pantalla en vez de
+        // sobre un padre invisible.
+        using var dlg = new DialogoAcercaDe();
+        if (!Visible) dlg.StartPosition = FormStartPosition.CenterScreen;
+        dlg.ShowDialog(Visible ? this : null);
+    }
 
     private void Ajustes_Click(object? sender, EventArgs e)
     {
