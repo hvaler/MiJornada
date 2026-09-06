@@ -231,73 +231,63 @@
   },
   "desarrollo": {
     "modulos_en_desarrollo": [
-      "Aplicacion completa (5 ficheros en 03_Desarrollo/, pendiente de la primera compilacion)"
+      "Aplicacion completa (5 ficheros en 03_Desarrollo/, compila; sin verificar en ejecucion)"
     ],
     "funcionalidades_en_progreso": [],
     "bloqueadores": [
-      "El proyecto NUNCA se ha compilado: no se ha ejecutado ni un dotnet build. Ver EV-001 y _hilo/DEUDA_TECNICA.md",
-      "Estado.cs tiene el ClientId de Entra ID sin rellenar (placeholder PON-AQUI-TU-CLIENT-ID). Sin el, la autenticacion no arranca"
+      "Estado.cs tiene el ClientId de Entra ID sin rellenar (placeholder PON-AQUI-TU-CLIENT-ID). Sin el la app no autentica, y sin ejecutarla no se pueden verificar DT-004 a DT-007"
     ],
     "proxima_entrega": null,
-    "notas_sprint": "Codigo escrito del tiron y traspasado desde tres documentos (06_Documentacion/CONTEXTO.md, 06_Documentacion/mi-jornada-traspaso.md, 03_Desarrollo/LEEME.md). El siguiente paso es compilar y corregir; CONTEXTO.md seccion 8 lista los seis fallos mas probables ordenados por probabilidad."
+    "notas_sprint": "Onboarding completado y primer build verde el 2026-09-06. El codigo compila sin una sola advertencia, pero NUNCA se ha ejecutado: los riesgos de interfaz y runtime (DT-004 a DT-007) siguen sin verificar. Siguiente paso real: rellenar el ClientId y probar con MiJornada.exe --minutos 2, con Teams abierto."
   },
   "evolutivoActivo": null,
   "evolutivos": {
     "_doc": "Estructura de cada evolutivo (codigo, titulo, estado, asignadoA, rama, prioridad, fechas, creadoPor, notas) en schema.md#evolutivos",
-    "pendientes": [
+    "pendientes": [],
+    "enProgreso": [],
+    "completados": [
       {
         "codigo": "EV-001",
         "titulo": "Primera compilacion y correccion de errores",
-        "estado": "pendiente",
+        "estado": "completado",
         "asignadoA": "hvaler",
         "rama": null,
         "prioridad": "alta",
         "fechaCreacion": "2026-09-06",
-        "fechaInicio": null,
+        "fechaInicio": "2026-09-06",
         "fechaEstimada": null,
-        "fechaCompletado": null,
+        "fechaCompletado": "2026-09-06",
         "creadoPor": "hvaler",
-        "notas": "El codigo nunca ha pasado por dotnet build. Sospechosos por orden de probabilidad (CONTEXTO.md seccion 8): 1) versiones de Microsoft.Identity.Client y su extension fijadas a 4.66.2, que puede no existir; 2) transparencia de Labels sobre el anillo en WinForms; 3) Clipboard.SetText con cadena vacia; 4) globo de notificacion con _tray.Visible=false; 5) parpadeo del anillo sin doble bufer; 6) async void en los manejadores. Incluye rellenar el ClientId de Entra ID en Estado.cs."
+        "notas": "Primer dotnet build del proyecto: compilacion correcta, 0 errores y 0 advertencias, en 5,2 s, con Nullable activado. NO hubo ni un error que corregir. DT-002 (versiones MSAL 4.66.2) resulto ser falsa alarma: existen, resuelven exacto y no tienen vulnerabilidades conocidas. Queda fuera de este evolutivo el ClientId de Entra ID (DT-003), que no se puede rellenar sin el Id del registro de aplicacion. OJO: DT-004 a DT-007 son riesgos de runtime y siguen SIN verificar; un build verde no dice nada sobre ellos."
       }
-    ],
-    "enProgreso": [],
-    "completados": []
+    ]
   },
   "ultimaSesion": {
     "_doc": "Se actualiza con /pausar y se lee con /continuar",
     "fecha": "2026-09-06",
     "evolutivoActivo": null,
-    "usuario": "hvaler",
+    "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
-    "proximoPaso": "EV-001: ejecutar dotnet build en 03_Desarrollo/ y corregir lo que salga",
-    "resumenSesion": "Onboarding del proyecto al ecosistema Ovillo: volcado del contexto de los tres documentos de traspaso al sistema Hilo, creacion de ecosystem.config.json y puesta en marcha del repositorio Git con remoto en GitHub.",
+    "proximoPaso": "Rellenar el ClientId en Estado.cs (DT-003) y ejecutar MiJornada.exe --minutos 2 con Teams abierto",
+    "resumenSesion": "Onboarding del proyecto al ecosistema Ovillo, repositorio Git con remoto en GitHub, y primer dotnet build del proyecto: verde a la primera, 0 errores y 0 advertencias.",
     "archivosModificados": [
-      "ecosystem.config.json",
-      "_hilo/ESTADO_PROYECTO.json",
-      "_hilo/CONTEXTO_TECNICO.md",
-      "_hilo/DEPENDENCIAS.md",
-      "_hilo/FUNCIONALIDADES.md",
-      "_hilo/DEUDA_TECNICA.md",
-      "_hilo/DECISIONES.md",
-      "_hilo/LECCIONES.md",
-      "_hilo/HISTORIAL_CAMBIOS.md",
-      "_hilo/SESION_ACTUAL.md",
-      "CLAUDE.md"
+      "_hilo/METRICAS.json",
+      "_hilo/DEUDA_TECNICA.md (DT-001 y DT-002 resueltas)"
     ],
     "notas": "No se ha tocado el codigo de la aplicacion: el alcance acordado era solo onboarding."
   },
   "metricas": {
     "cobertura_tests": null,
-    "ultimo_build": null,
+    "ultimo_build": "2026-09-06 - correcto (0 errores, 0 advertencias)",
     "ultimo_deploy": null,
     "incidencias_abiertas": 0,
-    "evolutivos_completados_mes": 0
+    "evolutivos_completados_mes": 1
   },
   "alertas": {
     "_doc": "Claude muestra estas alertas al iniciar sesion",
     "activas": [
-      "El proyecto NUNCA se ha compilado. Ejecutar dotnet build (EV-001) antes de cualquier cambio de codigo.",
-      "Estado.cs tiene el ClientId de Entra ID sin rellenar: la app no autentica hasta que se ponga el valor real."
+      "Estado.cs tiene el ClientId de Entra ID sin rellenar (DT-003): la app compila pero no autentica.",
+      "La aplicacion COMPILA pero nunca se ha EJECUTADO. DT-004 a DT-007 son riesgos de runtime aun sin verificar."
     ]
   },
   "historial_modos": [

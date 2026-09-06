@@ -39,13 +39,15 @@ Este archivo guía a Claude Code (claude.ai/code) cuando trabaja con código en 
 | Campo | Valor |
 |-------|-------|
 | **Nombre** | Mi jornada |
-| **Versión** | 0.0.0 — sin publicar (el `.csproj` declara `1.0.0`, pero **nunca se ha compilado**) |
+| **Versión** | 0.0.0 — sin publicar (el `.csproj` declara `1.0.0`) |
 | **Tipo** | Aplicación de escritorio (WinForms, `WinExe`) |
 | **Framework** | .NET 8 (`net8.0-windows`) |
 | **Código** | `03_Desarrollo/` — 5 ficheros, namespace plano `MiJornada`, sin `.sln` |
+| **Build** | ✅ Verde desde 2026-09-06 (0 errores, 0 advertencias) |
 
-> ⚠️ **Antes de tocar código, leer `_hilo/DEUDA_TECNICA.md`.** El proyecto está escrito pero no ha
-> pasado por `dotnet build` ni una vez (DT-001 / EV-001). Nada está verificado.
+> ⚠️ **Compila, pero nunca se ha ejecutado.** Falta el `ClientId` de Entra ID en `Estado.cs`
+> (DT-003), y sin ejecutar la app los riesgos de runtime DT-004 a DT-007 siguen sin verificar.
+> Un build verde no dice nada sobre ellos. Leer `_hilo/DEUDA_TECNICA.md` antes de tocar código.
 
 > Este proyecto es una **excepción deliberada** a varias reglas de `CLAUDE_BASE.md`: sin capas ni
 > DI (ADR-007), namespace plano, y el estado en disco local (ADR-004) — que aquí es correcto,

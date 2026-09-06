@@ -3,7 +3,7 @@
 > **Proposito**: issues conocidos, riesgos y trabajo pendiente de saneamiento.
 > Se sincroniza al Hub con `/mcp-sync` (categoria `deuda`) cuando el Hub este activo.
 
-**Ultima revision**: 2026-09-06 (onboarding)
+**Ultima revision**: 2026-09-06 (tras el primer `dotnet build`)
 
 ---
 
@@ -11,41 +11,22 @@
 
 | Severidad | Abiertas |
 |---|---|
-| 🔴 Critica | 3 |
+| 🔴 Critica | 1 |
 | 🟡 Media | 4 |
-| 🔵 Baja | 3 |
+| 🔵 Baja | 4 |
+| ✅ Resueltas | 2 |
 
-**El elefante en la habitacion**: el codigo se escribio del tiron y **nunca ha pasado por
-`dotnet build`**. Nada de lo que sigue esta verificado; los DT-002 a DT-007 son *sospechas
-ordenadas por probabilidad*, no fallos observados.
+**Estado**: el proyecto **ya compila** — 0 errores y 0 advertencias, con `Nullable` activado.
+Lo que queda abierto es de dos naturalezas distintas, y conviene no confundirlas:
+
+- **DT-003** es lo unico que impide ejecutar la aplicacion de verdad.
+- **DT-004 a DT-007 son riesgos de *runtime*, no de compilacion.** Un build verde no dice
+  absolutamente nada sobre ellos: solo se confirman o se descartan **ejecutando** la aplicacion,
+  y para eso hace falta resolver DT-003 antes. Siguen siendo sospechas, no fallos observados.
 
 ---
 
 ## 🔴 Criticas
-
-### DT-001 — El proyecto nunca se ha compilado
-
-**Ficheros**: todos · **Evolutivo**: EV-001
-
-Ni un `dotnet build`. Es el bloqueante de todo lo demas: no tiene sentido pulir nada mientras no
-haya un build verde del que partir.
-
-**Como se resuelve**: `cd 03_Desarrollo && dotnet build`, y corregir en el orden que salga.
-DT-002 a DT-007 son la lista de lo que probablemente aparezca.
-
----
-
-### DT-002 — Versiones de MSAL sin verificar
-
-**Fichero**: `03_Desarrollo/MiJornada.csproj`
-
-`Microsoft.Identity.Client` y `Microsoft.Identity.Client.Extensions.Msal` estan fijados a
-**4.66.2**, un numero que puede no existir en NuGet o no ser el conveniente.
-
-**Como se resuelve**: si NuGet protesta, subir ambos a la ultima estable de la rama 4.x —
-**los dos a la misma version**, porque la extension esta acoplada al cliente.
-
----
 
 ### DT-003 — `ClientId` sin rellenar
 
@@ -61,6 +42,36 @@ publico es informacion publica), asi que puede ir en el codigo sin problema.
 **Como se resuelve**: pegar el Id de aplicacion del registro de Entra ID. Se puede reutilizar
 `Teams Presence Flow` anadiendole la plataforma de escritorio y activando "flujos de cliente
 publico".
+
+**Bloquea**: la verificacion de DT-004 a DT-007, que solo se ven ejecutando la aplicacion.
+
+---
+
+## ✅ Resueltas
+
+### DT-001 — El proyecto nunca se ha compilado — RESUELTA 2026-09-06
+
+**Evolutivo**: EV-001
+
+Primer `dotnet build` de la historia del proyecto: **compilacion correcta, 0 advertencias,
+0 errores**, en 5,2 segundos. Ni un error que corregir.
+`bin/Debug/net8.0-windows/MiJornada.exe` generado (151 KB).
+
+Que compile con `Nullable` activado y sin una sola advertencia es mas de lo que cabia esperar de
+codigo escrito del tiron y nunca verificado.
+
+---
+
+### DT-002 — Versiones de MSAL sin verificar — RESUELTA 2026-09-06 (falsa alarma)
+
+**Fichero**: `03_Desarrollo/MiJornada.csproj`
+
+Era el sospechoso numero uno y no lo era. `dotnet list package` confirma que
+`Microsoft.Identity.Client` y `Microsoft.Identity.Client.Extensions.Msal` **4.66.2** existen y
+resuelven exacto (solicitado 4.66.2 → resuelto 4.66.2). `dotnet list package --vulnerable` no
+reporta ninguna vulnerabilidad conocida en esas versiones.
+
+**No tocar las versiones sin un motivo concreto.** Funcionan.
 
 ---
 
