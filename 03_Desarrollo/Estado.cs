@@ -94,6 +94,23 @@ public class Ajustes
     public DateTime? UltimoAutoFichaje { get; set; }
 
     /// <summary>
+    /// Franja en la que el fichaje automático puede saltar, en formato <c>HH:mm</c> invariante.
+    /// Sin ella, desbloquear el equipo a las tres de la madrugada ficharía la jornada.
+    /// </summary>
+    public string AutoFichajeDesde { get; set; } = "07:00";
+
+    /// <inheritdoc cref="AutoFichajeDesde"/>
+    public string AutoFichajeHasta { get; set; } = "11:00";
+
+    /// <summary>No fichar solo los sábados ni los domingos.</summary>
+    public bool AutoFichajeSoloLaborables { get; set; } = true;
+
+    /// <summary>
+    /// Festivos en los que tampoco se ficha solo, en formato <c>yyyy-MM-dd</c> invariante.
+    /// </summary>
+    public List<string> Festivos { get; set; } = new();
+
+    /// <summary>
     /// Compartir estado y ajustes entre equipos a través de la carpeta de aplicación de
     /// OneDrive. Activado por defecto: sin esto, cada equipo cree que no hay jornada y se
     /// pueden arrancar dos, que se pelearían por la misma presencia de Teams.
@@ -121,6 +138,68 @@ public class Ajustes
 
     [JsonIgnore]
     public TimeSpan Duracion => TimeSpan.FromMinutes(Math.Clamp(DuracionMinutos, 1, 24 * 60));
+
+    /// <summary>
+    /// Interpreta una fecha escrita a mano. Acepta lo que la gente escribe de verdad:
+    /// <c>dd/MM/yyyy</c>, <c>d/M/yyyy</c>, <c>dd-MM-yyyy</c> y el ISO <c>yyyy-MM-dd</c>.
+    ///
+    /// <para>Formatos explícitos y cultura invariante, nunca la del equipo: el fichero de
+    /// ajustes viaja por OneDrive entre máquinas que pueden tener otra configuración regional,
+    /// y con la cultura local un <c>03/04/2026</c> sería marzo aquí y abril allí.</para>
+    /// </summary>
+    public static DateTime? ParsearFecha(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return null;
+        string[] formatos = ["dd/MM/yyyy", "d/M/yyyy", "yyyy-MM-dd", "dd-MM-yyyy"];
+        return DateTime.TryParseExact(texto.Trim(), formatos,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var d) ? d : null;
+    }
+
+    /// <summary>Cierto si esa fecha está en la lista de festivos.</summary>
+    public bool EsFestivo(DateTimeOffset momento) =>
+        Festivos.Contains(momento.ToString("yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture));
+
+    /// <summary>
+    /// Decide si el fichaje automático puede saltar ahora mismo, y explica por qué no.
+    ///
+    /// <para>Solo condiciona al AUTOMATISMO. Fichar a mano funciona siempre: si un sábado
+    /// decides trabajar, la aplicación no tiene por qué llevarte la contraria.</para>
+    /// </summary>
+    public bool PuedeFicharSolo(DateTimeOffset ahora, out string motivo)
+    {
+        if (AutoFichajeSoloLaborables &&
+            ahora.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        {
+            motivo = "es fin de semana";
+            return false;
+        }
+
+        if (EsFestivo(ahora))
+        {
+            motivo = "es festivo";
+            return false;
+        }
+
+        var desde = HoraDe(AutoFichajeDesde, new TimeSpan(0, 0, 0));
+        var hasta = HoraDe(AutoFichajeHasta, new TimeSpan(23, 59, 0));
+        var ahoraDelDia = ahora.TimeOfDay;
+
+        if (ahoraDelDia < desde || ahoraDelDia > hasta)
+        {
+            motivo = $@"está fuera de la franja {desde:hh\:mm}-{hasta:hh\:mm}";
+            return false;
+        }
+
+        motivo = string.Empty;
+        return true;
+    }
+
+    /// <summary>Interpreta un <c>HH:mm</c> invariante; si no se puede, devuelve el respaldo.</summary>
+    internal static TimeSpan HoraDe(string? texto, TimeSpan respaldo) =>
+        TimeSpan.TryParseExact(texto, @"hh\:mm",
+            System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : respaldo;
 
     /// <summary>Duración que toca ese día: la excepción si la hay, y si no la general.</summary>
     public TimeSpan DuracionDe(DayOfWeek dia) =>

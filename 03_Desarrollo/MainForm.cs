@@ -202,6 +202,14 @@ public class MainForm : Form
             // jornada a propósito, tampoco: cancelar significa "hoy no quiero estar fichado".
             if (_ajustes.UltimoAutoFichaje?.Date == DateTime.Today) return;
 
+            // Fin de semana, festivo o fuera de la franja horaria. Solo condiciona al
+            // automatismo: fichar a mano sigue funcionando cualquier día y a cualquier hora.
+            if (!_ajustes.PuedeFicharSolo(DateTimeOffset.Now, out var motivo))
+            {
+                Debug.WriteLine($"Fichaje automático omitido: {motivo}.");
+                return;
+            }
+
             if (!await IniciarAsync()) return;   // si Graph falla, el intento de hoy no se gasta
 
             _ajustes.UltimoAutoFichaje = DateTime.Today;

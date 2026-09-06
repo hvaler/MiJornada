@@ -102,6 +102,9 @@ solo con el anillo y el botón; la configuración crece aquí sin ensuciarla.
 | Arrancar con Windows | sí / no | **no** |
 | ...y hacerlo en la bandeja | sí / no | no |
 | Compartir la jornada entre equipos | sí / no | **sí** |
+| Franja del fichaje automático | dos horas (HH:mm) | 07:00 – 11:00 |
+| No fichar solo sábados ni domingos | sí / no | **sí** |
+| Festivos en los que no fichar solo | lista de fechas | vacía |
 
 - Se persisten en `%APPDATA%/MiJornada/ajustes.json`, **fichero aparte de `estado.json`**:
   cancelar una jornada no debe olvidar que tu jornada dura 6 horas.
@@ -186,6 +189,36 @@ Detalles tecnicos que no son opcionales:
 | **Desbloquear**, primera vez del dia | Ficha, si el ajuste esta activo y no hay jornada en marcha |
 | **Desbloquear**, resto del dia | Nada. Volver del cafe no vuelve a fichar |
 | **Suspender / hibernar** | Nada especial: al volver, la resta contra el reloj real da el valor correcto (PAT-001) |
+
+### M15 — Cuando puede fichar solo
+
+**Ficheros**: `Ajustes.PuedeFicharSolo`, pestaña Calendario de `DialogoAjustes` · **Estado**: verificado 2026-09-06
+
+Tres guardas sobre el fichaje automatico, en este orden: fin de semana, festivo, franja horaria.
+Cada una devuelve su motivo, que va al registro de depuracion.
+
+**Solo condicionan al AUTOMATISMO.** Fichar a mano funciona cualquier dia y a cualquier hora: si
+un sabado decides trabajar, la aplicacion no tiene por que llevarte la contraria.
+
+| Guarda | Por defecto |
+|---|---|
+| Franja horaria | 07:00 – 11:00. Sin ella, desbloquear a las 3 de la madrugada ficharia la jornada |
+| Fin de semana | No ficha sabados ni domingos |
+| Festivos | Lista de fechas, vacia de serie |
+
+Los festivos se escriben a mano, una fecha por linea. `Ajustes.ParsearFecha` acepta lo que la
+gente escribe de verdad —`25/12/2026`, `1/5/2026`, `2026-01-06`, `06-01-2026`— y **siempre con
+cultura invariante**, nunca la del equipo: el fichero viaja por OneDrive entre maquinas que
+pueden tener otra configuracion regional, y con la cultura local un `03/04/2026` seria marzo aqui
+y abril alli. Se guardan normalizados a `yyyy-MM-dd`, sin duplicados y ordenados.
+
+Una linea que no se entienda **avisa pero no bloquea** el guardado: se descarta. Bloquear el
+dialogo entero por una linea suelta seria desproporcionado. Solo la duracion de cero minutos
+impide guardar.
+
+**Verificado** llamando a la logica directamente: lunes 08:30 ficha; lunes 03:00 y 15:00 quedan
+fuera de franja; sabado y domingo son fin de semana; 25 de diciembre es festivo. Y el parseo
+acepta los cuatro formatos y rechaza `32/13/2026`, texto libre y cadena vacia.
 
 ### M14 — Duracion por dia de la semana
 
@@ -296,9 +329,8 @@ Lo tachado ya esta hecho.
 - ~~**Icono de bandeja dinamico**~~ — HECHO 2026-09-06 (M9).
 - ~~**Aviso antes del final**~~ y ~~**arranque con Windows / minimizado**~~ — HECHO 2026-09-06.
 - ~~**Duracion por dia de la semana**~~ — HECHO 2026-09-06, con las siete y en pestañas.
-- **Franja horaria** en la que el fichaje automatico puede saltar: hoy, un desbloqueo a las 3 de
-  la manana ficha.
-- **Saltar fines de semana y festivos.**
+- ~~**Franja horaria** del fichaje automatico~~ y ~~**saltar fines de semana y festivos**~~
+  — HECHO 2026-09-06 (M15).
 - **INSTALADOR**: todo lo que hoy se hace a mano deberia hacerlo el (crear/actualizar el registro
   de Entra con `02_Entorno/crear-registro-entra.ps1`, colocar el .exe, el acceso directo de
   inicio). Es el siguiente salto de usabilidad si esto lo va a usar alguien mas.

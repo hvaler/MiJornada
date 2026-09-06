@@ -15,6 +15,7 @@ public class DialogoAjustes : Form
     private static readonly Color Tinta = Color.FromArgb(32, 31, 30);
     private static readonly Color Gris = Color.FromArgb(96, 94, 92);
     private static readonly Color Rojo = Color.FromArgb(164, 38, 44);
+    private static readonly Color Ambar = Color.FromArgb(150, 120, 0);
 
     /// <summary>Orden de lunes a domingo, como se lee una semana aquí. Ojo: NO es el orden de
     /// <see cref="DayOfWeek"/>, que empieza en domingo.</summary>
@@ -40,6 +41,10 @@ public class DialogoAjustes : Form
     private readonly CheckBox _arrancar = new();
     private readonly CheckBox _minimizado = new();
     private readonly CheckBox _sincronizar = new();
+    private readonly DateTimePicker _desde = new();
+    private readonly DateTimePicker _hasta = new();
+    private readonly CheckBox _soloLaborables = new();
+    private readonly TextBox _festivos = new();
     private readonly Label _aviso = new();
     private readonly Button _guardar = new();
     private readonly ToolTip _pista = new();
@@ -55,7 +60,7 @@ public class DialogoAjustes : Form
         _jornadaEnMarcha = jornadaEnMarcha;
 
         Text = "Ajustes";
-        ClientSize = new Size(384, 404);
+        ClientSize = new Size(384, 424);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -69,13 +74,20 @@ public class DialogoAjustes : Form
         pestanas.TabPages.Add(PestanaJornada());
         pestanas.TabPages.Add(PestanaPresencia());
         pestanas.TabPages.Add(PestanaAutomatismos());
+        pestanas.TabPages.Add(PestanaCalendario());
         pestanas.TabPages.Add(PestanaEquipos());
         Controls.Add(pestanas);
+
+        // El aviso va FUERA de las pestañas: un problema de la pestaña Jornada no se vería si
+        // el mensaje viviera en otra.
+        _aviso.SetBounds(14, 352, 358, 20);
+        _aviso.ForeColor = Rojo;
+        Controls.Add(_aviso);
 
         // --------------------------------------------------------- pie común
         var acerca = new LinkLabel
         {
-            Bounds = new Rectangle(14, 362, 110, 24),
+            Bounds = new Rectangle(14, 382, 110, 24),
             Text = "Acerca de",
             LinkColor = Gris,
             LinkBehavior = LinkBehavior.HoverUnderline,
@@ -86,7 +98,7 @@ public class DialogoAjustes : Form
 
         var cancelar = new Button
         {
-            Bounds = new Rectangle(196, 360, 84, 30),
+            Bounds = new Rectangle(196, 380, 84, 30),
             Text = "Cancelar",
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.White,
@@ -97,7 +109,7 @@ public class DialogoAjustes : Form
         cancelar.FlatAppearance.BorderColor = Color.FromArgb(200, 198, 196);
         Controls.Add(cancelar);
 
-        _guardar.SetBounds(288, 360, 84, 30);
+        _guardar.SetBounds(288, 380, 84, 30);
         _guardar.Text = "Guardar";
         _guardar.FlatStyle = FlatStyle.Flat;
         _guardar.FlatAppearance.BorderSize = 0;
@@ -233,24 +245,61 @@ public class DialogoAjustes : Form
         _autoFichaje.ForeColor = Tinta;
         _autoFichaje.Checked = _ajustes.FicharAlDesbloquear;
         p.Controls.Add(_autoFichaje);
-        p.Controls.Add(Texto(34, 46, 306, "Una vez al día. Si ya has fichado o cancelado hoy, no hace nada."));
+        p.Controls.Add(Texto(34, 44, 306, "Una vez al día, si no has fichado ni cancelado hoy.", null, 22));
 
-        _arrancar.SetBounds(16, 96, 320, 22);
+        p.Controls.Add(Texto(34, 72, 60, "Solo entre", null, 24));
+        Hora(_desde, 100, 70, _ajustes.AutoFichajeDesde, "07:00", p);
+        p.Controls.Add(Texto(178, 72, 16, "y", null, 24));
+        Hora(_hasta, 198, 70, _ajustes.AutoFichajeHasta, "11:00", p);
+
+        _arrancar.SetBounds(16, 120, 320, 22);
         _arrancar.Text = "Arrancar con Windows";
         _arrancar.ForeColor = Tinta;
         _arrancar.Checked = ArranqueWindows.Activo;
         _arrancar.CheckedChanged += (_, _) => _minimizado.Enabled = _arrancar.Checked;
         p.Controls.Add(_arrancar);
 
-        _minimizado.SetBounds(34, 120, 300, 22);
+        _minimizado.SetBounds(34, 144, 300, 22);
         _minimizado.Text = "y hacerlo en la bandeja";
         _minimizado.ForeColor = Gris;
         _minimizado.Checked = _ajustes.ArrancarMinimizado;
         _minimizado.Enabled = _arrancar.Checked;
         p.Controls.Add(_minimizado);
 
-        p.Controls.Add(Texto(34, 148, 306,
+        p.Controls.Add(Texto(34, 172, 306,
             "El fichaje al desbloquear solo funciona si la aplicación está abierta."));
+
+        return p;
+    }
+
+    private TabPage PestanaCalendario()
+    {
+        var p = new TabPage("Calendario") { BackColor = Color.White };
+
+        p.Controls.Add(Negrita(16, 12, 320, "Días en los que no fichar solo"));
+        p.Controls.Add(Texto(16, 34, 330,
+            "Solo al automatismo: a mano puedes fichar cualquier día.", null, 22));
+
+        _soloLaborables.SetBounds(16, 60, 320, 22);
+        _soloLaborables.Text = "Ni sábados ni domingos";
+        _soloLaborables.ForeColor = Tinta;
+        _soloLaborables.Checked = _ajustes.AutoFichajeSoloLaborables;
+        p.Controls.Add(_soloLaborables);
+
+        p.Controls.Add(Texto(16, 90, 330, "Ni estos festivos, uno por línea (dd/mm/aaaa):", null, 22));
+
+        _festivos.SetBounds(16, 114, 320, 168);
+        _festivos.Multiline = true;
+        _festivos.ScrollBars = ScrollBars.Vertical;
+        _festivos.BorderStyle = BorderStyle.FixedSingle;
+        _festivos.Font = new Font("Consolas", 9f);
+        _festivos.Text = string.Join(Environment.NewLine, _ajustes.Festivos
+            .Select(f => DateTime.TryParse(f, System.Globalization.CultureInfo.InvariantCulture,
+                                           System.Globalization.DateTimeStyles.None, out var d)
+                ? d.ToString("dd/MM/yyyy")
+                : f));
+        _festivos.TextChanged += (_, _) => Validar();
+        p.Controls.Add(_festivos);
 
         return p;
     }
@@ -270,10 +319,6 @@ public class DialogoAjustes : Form
 
         p.Controls.Add(Texto(34, 96, 306,
             "El arranque con Windows no se comparte: depende de cada equipo."));
-
-        _aviso.SetBounds(16, 250, 330, 20);
-        _aviso.ForeColor = Rojo;
-        p.Controls.Add(_aviso);
 
         return p;
     }
@@ -301,6 +346,18 @@ public class DialogoAjustes : Form
         ForeColor = color ?? Gris
     };
 
+    /// <summary>Selector de hora compacto. Se usa DateTimePicker y no dos ruedas para que
+    /// admita minutos sin ocupar cuatro controles.</summary>
+    private static void Hora(DateTimePicker d, int x, int y, string? valor, string respaldo, Control padre)
+    {
+        d.SetBounds(x, y, 72, 24);
+        d.Format = DateTimePickerFormat.Custom;
+        d.CustomFormat = "HH:mm";
+        d.ShowUpDown = true;
+        d.Value = DateTime.Today + Ajustes.HoraDe(valor, Ajustes.HoraDe(respaldo, TimeSpan.Zero));
+        padre.Controls.Add(d);
+    }
+
     private static void Rueda(NumericUpDown n, int x, int y, int ancho,
                               int min, int max, int paso, Control padre)
     {
@@ -312,6 +369,24 @@ public class DialogoAjustes : Form
         n.BorderStyle = BorderStyle.FixedSingle;
         padre.Controls.Add(n);
     }
+
+    /// <summary>Líneas del cuadro de festivos que no se entienden como fecha.</summary>
+    private List<string> LineasInvalidas() =>
+        _festivos.Lines
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0 && Ajustes.ParsearFecha(l) is null)
+            .ToList();
+
+    /// <summary>Festivos en formato invariante, sin duplicados y ordenados.</summary>
+    private List<string> FestivosValidos() =>
+        _festivos.Lines
+            .Select(l => Ajustes.ParsearFecha(l.Trim()))
+            .Where(d => d is not null)
+            .Select(d => d!.Value.ToString("yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture))
+            .Distinct()
+            .OrderBy(f => f)
+            .ToList();
 
     private int MinutosGenerales() => (int)_horas.Value * 60 + (int)_minutos.Value;
 
@@ -344,9 +419,27 @@ public class DialogoAjustes : Form
             }
         }
 
+        // Solo la duración BLOQUEA el guardado: una jornada de cero minutos no tiene arreglo
+        // por nuestra parte. Una fecha mal escrita en los festivos solo AVISA y se descarta:
+        // bloquear el diálogo entero por una línea suelta sería desproporcionado.
         _guardar.Enabled = problema is null;
         _guardar.BackColor = problema is null ? Morado : Color.FromArgb(200, 198, 196);
-        _aviso.Text = problema ?? string.Empty;
+
+        if (problema is not null)
+        {
+            _aviso.ForeColor = Rojo;
+            _aviso.Text = problema;
+            return;
+        }
+
+        var malas = LineasInvalidas();
+        _aviso.ForeColor = Ambar;
+        _aviso.Text = malas.Count switch
+        {
+            0 => string.Empty,
+            1 => $"No se entiende la fecha {malas[0]}; se ignorará.",
+            _ => $"Hay {malas.Count} fechas que no se entienden; se ignorarán."
+        };
     }
 
     private void Guardar_Click(object? sender, EventArgs e)
@@ -372,6 +465,12 @@ public class DialogoAjustes : Form
 
         _ajustes.SincronizarEntreEquipos = _sincronizar.Checked;
         _ajustes.AvisoMinutos = (int)_avisoMinutos.Value;
+        _ajustes.AutoFichajeDesde = _desde.Value.ToString("HH:mm",
+            System.Globalization.CultureInfo.InvariantCulture);
+        _ajustes.AutoFichajeHasta = _hasta.Value.ToString("HH:mm",
+            System.Globalization.CultureInfo.InvariantCulture);
+        _ajustes.AutoFichajeSoloLaborables = _soloLaborables.Checked;
+        _ajustes.Festivos = FestivosValidos();
         _ajustes.ArrancarMinimizado = _minimizado.Checked;
 
         // El acceso directo se crea o se borra aquí. Si falla no se impide guardar el resto:

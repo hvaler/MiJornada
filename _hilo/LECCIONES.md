@@ -462,6 +462,56 @@ proceso, y con el la jornada en curso (mismo riesgo que DT-005).
 
 ---
 
+### TEC-014: Medir el texto es mas fiable que mirar la captura
+
+Al maquetar a mano en WinForms, un texto que no cabe se corta **sin aviso**. En esta sesion pasó
+tres veces, y una de ellas no se apreciaba bien en la captura de pantalla.
+
+Comprobarlo cuesta cuatro lineas y no depende del ojo:
+
+```powershell
+Add-Type -AssemblyName System.Drawing
+$f = New-Object System.Drawing.Font("Segoe UI", 9)
+$g = [System.Drawing.Graphics]::FromImage((New-Object System.Drawing.Bitmap(1,1)))
+[math]::Ceiling($g.MeasureString("el texto", $f).Width)   # comparar con el ancho de la etiqueta
+```
+
+**Ojo con los falsos positivos**: una etiqueta alta (40 px) envuelve a dos lineas, asi que
+"no cabe en el ancho" no significa que se corte. Solo aplica a las etiquetas de una linea.
+
+Origen del problema en este proyecto: el helper `Texto` de `DialogoAjustes` fijaba altura 40. Las
+etiquetas en linea ("h", "min") necesitan 20-24, o se solapan con la fila de abajo y quedan
+tapadas por sus propios controles.
+
+**Fecha**: 2026-09-06
+
+---
+
+### TEC-015: Cargar el ensamblado para probar la logica, y hacerlo en PowerShell 7
+
+El proyecto no tiene tests (DT-011) y `MainForm` no es testeable (ADR-007), pero la logica del
+modelo si se puede ejercitar sin interfaz:
+
+```powershell
+$asm = [Reflection.Assembly]::LoadFrom('...bin/Debug/net8.0-windows/MiJornada.dll')
+$t = $asm.GetType('MiJornada.Ajustes')
+$t::ParsearFecha('25/12/2026')
+```
+
+**Tiene que ser PowerShell 7**, no la 5.1: el ensamblado es .NET 8 y la 5.1 corre sobre .NET
+Framework, donde `CreateInstance` devuelve nulo sin explicar por que. Es lo contrario de TEC-005
+(el modulo de Graph solo esta en la 5.1), asi que en este proyecto se usan las dos consolas para
+cosas distintas.
+
+Para parametros `out` desde PowerShell: `$m=''; $a.PuedeFicharSolo($fecha, [ref]$m)`.
+
+Asi se verificaron `PuedeFicharSolo` y `ParsearFecha` sin tocar la interfaz, que es donde la
+automatizacion se atasca con los dialogos modales.
+
+**Fecha**: 2026-09-06
+
+---
+
 ## 4. Preferencias del proyecto
 
 ### PREF-001: Sin arquitectura de mas
