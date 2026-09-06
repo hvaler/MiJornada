@@ -11,43 +11,43 @@
 
 | Severidad | Abiertas |
 |---|---|
-| 🔴 Critica | 1 |
+| 🔴 Critica | 0 |
 | 🟡 Media | 4 |
 | 🔵 Baja | 4 |
-| ✅ Resueltas | 2 |
+| ✅ Resueltas | 3 |
 
-**Estado**: el proyecto **ya compila** — 0 errores y 0 advertencias, con `Nullable` activado.
-Lo que queda abierto es de dos naturalezas distintas, y conviene no confundirlas:
+**Estado**: el proyecto **compila** (0 errores, 0 advertencias) y **ya esta configurado**: tiene
+ClientId y tenant reales. Nada impide ejecutarlo.
 
-- **DT-003** es lo unico que impide ejecutar la aplicacion de verdad.
-- **DT-004 a DT-007 son riesgos de *runtime*, no de compilacion.** Un build verde no dice
-  absolutamente nada sobre ellos: solo se confirman o se descartan **ejecutando** la aplicacion,
-  y para eso hace falta resolver DT-003 antes. Siguen siendo sospechas, no fallos observados.
-
----
-
-## 🔴 Criticas
-
-### DT-003 — `ClientId` sin rellenar
-
-**Fichero**: `03_Desarrollo/Estado.cs`
-
-```csharp
-public const string ClientId = "PON-AQUI-TU-CLIENT-ID";
-```
-
-La aplicacion compila con el placeholder pero no autentica. No es un secreto (un Id de cliente
-publico es informacion publica), asi que puede ir en el codigo sin problema.
-
-**Como se resuelve**: pegar el Id de aplicacion del registro de Entra ID. Se puede reutilizar
-`Teams Presence Flow` anadiendole la plataforma de escritorio y activando "flujos de cliente
-publico".
-
-**Bloquea**: la verificacion de DT-004 a DT-007, que solo se ven ejecutando la aplicacion.
+**Lo que falta ahora es ejecutarlo.** DT-004 a DT-007 son riesgos de *runtime*: un build verde no
+dice absolutamente nada sobre ellos, y siguen siendo **sospechas sin comprobar**. Se confirman o
+se descartan en el primer arranque real, idealmente con `MiJornada.exe --minutos 2` y Teams
+abierto.
 
 ---
 
 ## ✅ Resueltas
+
+### DT-003 — `ClientId` sin rellenar — RESUELTA 2026-09-06
+
+**Fichero**: `03_Desarrollo/Estado.cs`
+
+Se creo un registro **propio** en Entra ID con `02_Entorno/crear-registro-entra.ps1`:
+
+| | |
+|---|---|
+| displayName | `Mi jornada` |
+| ClientId (appId) | `dbcd6425-561b-4d91-a4d5-f0bb25b31241` |
+| objectId | `5000bd20-ba36-4d78-8150-6a5aed0b08bd` |
+| Permiso | delegado `Presence.ReadWrite` (`8d3c54a7-cf58-4773-bf81-c0cd6ad522bb`) |
+| Cliente publico | si (`isFallbackPublicClient`), sin secreto |
+
+Se descarto reutilizar el ClientId de Microsoft Graph PowerShell: ver TEC-007 en
+`_hilo/LECCIONES.md`. Este registro solo podra hacer una cosa, cambiar la presencia.
+
+El ClientId **no es un secreto** y va en el codigo a proposito (ADR-003).
+
+---
 
 ### DT-001 — El proyecto nunca se ha compilado — RESUELTA 2026-09-06
 

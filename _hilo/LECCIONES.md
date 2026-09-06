@@ -321,6 +321,48 @@ depende de que `comillas.edu` siga siendo el dominio principal.
 
 ---
 
+### TEC-009: Un solo registro de Entra sirve para TODO el equipo
+
+**La duda que surge sola**: "si se lo instalo a un companero, ¿tiene que crear el suyo con
+`crear-registro-entra.ps1`?". **No.**
+
+Hay que separar dos identidades que se confunden con facilidad:
+
+| | Que identifica | De donde sale |
+|---|---|---|
+| **ClientId** | La **aplicacion** (`Mi jornada`) | Fijo en `Estado.cs`. Uno para todo el tenant |
+| **Object ID** | La **persona** que la usa | `cuenta.HomeAccountId.ObjectId`, en tiempo de ejecucion |
+
+El registro se creo con `signInAudience = AzureADMyOrg`, asi que **cualquier cuenta de Comillas**
+puede autenticarse contra ese mismo ClientId. Y como `Presence.ReadWrite` es un permiso
+**delegado**, cada persona solo puede cambiar **su propia** presencia: el token se emite a nombre
+de quien inicia sesion.
+
+Por eso `PresenciaService` saca el object ID de la cuenta autenticada en vez de tenerlo escrito.
+Es lo que hace que el mismo `.exe` funcione para cualquiera sin tocar nada.
+
+**Lo que necesita un companero**: el `.exe` y nada mas. Ni PowerShell, ni el modulo de Graph, ni
+registro propio. La primera vez inicia sesion con codigo de dispositivo y acepta el consentimiento
+de `Presence.ReadWrite` — un clic, permiso delegado, sin aprobacion de administrador.
+
+**Lo que NO hay que hacer**: ejecutar `crear-registro-entra.ps1` por cada persona. Crearia
+registros duplicados en el directorio de Comillas. El script es **una vez por tenant**, no una vez
+por usuario (por eso es idempotente y comprueba si ya existe).
+
+**Implicaciones a tener en cuenta**:
+
+- El registro es un objeto del directorio de Comillas del que este proyecto depende. **Si se
+  borra, deja de funcionar para todos.**
+- Si el consentimiento individual molestase con varias personas, un administrador puede conceder
+  consentimiento para toda la organizacion y nadie volveria a ver el aviso.
+- Que la app se auto-registre en el primer arranque **no tiene sentido**: crear un registro exige
+  `Application.ReadWrite.All`, que un usuario normal no tiene, y ademas habria que autenticarse
+  para poder crear la aplicacion con la que autenticarse. Pescadilla que se muerde la cola.
+
+**Fecha**: 2026-09-06
+
+---
+
 ## 4. Preferencias del proyecto
 
 ### PREF-001: Sin arquitectura de mas

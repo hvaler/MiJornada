@@ -6,11 +6,12 @@ namespace MiJornada;
 public static class Config
 {
     /// <summary>
-    /// Id de la aplicación registrada en Entra ID. Puede reutilizarse el registro
-    /// "Teams Presence Flow", añadiéndole una plataforma de tipo "Aplicaciones
-    /// móviles y de escritorio" y activando "Permitir flujos de cliente público".
+    /// Id de la aplicación "Mi jornada" registrada en Entra ID el 2026-09-06 con
+    /// <c>02_Entorno/crear-registro-entra.ps1</c>. Cliente público, sin secreto (ADR-003):
+    /// un Id de cliente público es información pública, no una credencial.
+    /// Su único permiso es el delegado <c>Presence.ReadWrite</c>.
     /// </summary>
-    public const string ClientId = "PON-AQUI-TU-CLIENT-ID";
+    public const string ClientId = "dbcd6425-561b-4d91-a4d5-f0bb25b31241";
 
     /// <summary>
     /// Tenant concreto (comillas.edu) en lugar de "organizations": lleva la pantalla de inicio

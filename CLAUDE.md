@@ -44,10 +44,12 @@ Este archivo guía a Claude Code (claude.ai/code) cuando trabaja con código en 
 | **Framework** | .NET 8 (`net8.0-windows`) |
 | **Código** | `03_Desarrollo/` — 5 ficheros, namespace plano `MiJornada`, sin `.sln` |
 | **Build** | ✅ Verde desde 2026-09-06 (0 errores, 0 advertencias) |
+| **Registro Entra** | ✅ `Mi jornada` — ClientId `dbcd6425-561b-4d91-a4d5-f0bb25b31241` |
 
-> ⚠️ **Compila, pero nunca se ha ejecutado.** Falta el `ClientId` de Entra ID en `Estado.cs`
-> (DT-003), y sin ejecutar la app los riesgos de runtime DT-004 a DT-007 siguen sin verificar.
-> Un build verde no dice nada sobre ellos. Leer `_hilo/DEUDA_TECNICA.md` antes de tocar código.
+> ⚠️ **Compila y está configurada, pero nunca se ha ejecutado.** Los riesgos de runtime DT-004 a
+> DT-007 siguen sin verificar: un build verde no dice nada sobre ellos. Se comprueban en el primer
+> arranque real (`MiJornada.exe --minutos 2`, con Teams abierto). Leer `_hilo/DEUDA_TECNICA.md`
+> antes de tocar código.
 
 > Este proyecto es una **excepción deliberada** a varias reglas de `CLAUDE_BASE.md`: sin capas ni
 > DI (ADR-007), namespace plano, y el estado en disco local (ADR-004) — que aquí es correcto,

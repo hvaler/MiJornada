@@ -231,14 +231,12 @@
   },
   "desarrollo": {
     "modulos_en_desarrollo": [
-      "Aplicacion completa (5 ficheros en 03_Desarrollo/, compila; sin verificar en ejecucion)"
+      "Aplicacion completa (compila y configurada; pendiente del primer arranque real)"
     ],
     "funcionalidades_en_progreso": [],
-    "bloqueadores": [
-      "Estado.cs tiene el ClientId de Entra ID sin rellenar (placeholder PON-AQUI-TU-CLIENT-ID). Sin el la app no autentica, y sin ejecutarla no se pueden verificar DT-004 a DT-007"
-    ],
+    "bloqueadores": [],
     "proxima_entrega": null,
-    "notas_sprint": "Onboarding completado y primer build verde el 2026-09-06. El codigo compila sin una sola advertencia, pero NUNCA se ha ejecutado: los riesgos de interfaz y runtime (DT-004 a DT-007) siguen sin verificar. Siguiente paso real: rellenar el ClientId y probar con MiJornada.exe --minutos 2, con Teams abierto."
+    "notas_sprint": "Onboarding, primer build verde y registro propio en Entra ID, todo el 2026-09-06. La app compila sin advertencias y tiene ClientId y tenant reales. Lo unico que le falta es haberse ejecutado alguna vez: DT-004 a DT-007 (transparencia de etiquetas, Clipboard vacio, globo de notificacion, parpadeo del anillo) solo se ven arrancandola."
   },
   "evolutivoActivo": null,
   "evolutivos": {
@@ -268,11 +266,13 @@
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
-    "proximoPaso": "Rellenar el ClientId en Estado.cs (DT-003) y ejecutar MiJornada.exe --minutos 2 con Teams abierto",
-    "resumenSesion": "Onboarding del proyecto al ecosistema Ovillo, repositorio Git con remoto en GitHub, y primer dotnet build del proyecto: verde a la primera, 0 errores y 0 advertencias.",
+    "proximoPaso": "Primer arranque real: MiJornada.exe --minutos 2 con Teams abierto, y verificar DT-004 a DT-007",
+    "resumenSesion": "Onboarding al ecosistema Ovillo, repositorio en GitHub, primer dotnet build (verde a la primera), diagnostico de la autenticacion (equipo no unido a Entra: el codigo de dispositivo es obligatorio) y registro de aplicacion propio creado desde PowerShell.",
     "archivosModificados": [
       "_hilo/ESTADO_PROYECTO.json",
-      "_hilo/METRICAS.json"
+      "_hilo/METRICAS.json",
+      "03_Desarrollo/Estado.cs (ClientId y tenant reales)",
+      "02_Entorno/crear-registro-entra.ps1 (nuevo)"
     ],
     "notas": "No se ha tocado el codigo de la aplicacion: el alcance acordado era solo onboarding."
   },
@@ -286,8 +286,8 @@
   "alertas": {
     "_doc": "Claude muestra estas alertas al iniciar sesion",
     "activas": [
-      "Estado.cs tiene el ClientId de Entra ID sin rellenar (DT-003): la app compila pero no autentica.",
-      "La aplicacion COMPILA pero nunca se ha EJECUTADO. DT-004 a DT-007 son riesgos de runtime aun sin verificar."
+      "La aplicacion COMPILA y esta CONFIGURADA (ClientId y tenant reales), pero NUNCA se ha ejecutado. DT-004 a DT-007 son riesgos de runtime aun sin verificar.",
+      "Primer arranque pendiente: MiJornada.exe --minutos 2, con Teams abierto (sin sesion de presencia activa el cambio no se ve)."
     ]
   },
   "historial_modos": [
