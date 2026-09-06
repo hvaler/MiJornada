@@ -276,6 +276,51 @@ actualizacion.
 
 ---
 
+### TEC-007: NO usar el ClientId de Graph PowerShell en la app — sus scopes son enormes
+
+**Contexto**: se planteo usar el ClientId de "Microsoft Graph Command Line Tools"
+(`14d82eec-204b-4c2f-b7e8-296a70dab67e`) en MiJornada para saltarse el registro de aplicacion.
+`Get-MgContext` el 2026-09-06 lo desaconseja:
+
+```
+Scopes: {Application.Read.All, Application.ReadWrite.All,
+         AppRoleAssignment.ReadWrite.All, AuditLog.Read.All...}
+```
+
+Esa aplicacion tiene consentido en esta cuenta un conjunto de permisos **muy amplio**, acumulado
+de cada `Connect-MgGraph -Scopes ...` del pasado. `Application.ReadWrite.All` permite crear y
+modificar registros de aplicaciones; `AppRoleAssignment.ReadWrite.All`, conceder asignaciones de
+rol.
+
+**Conclusion**: aunque MiJornada solo pidiera `Presence.ReadWrite`, se estaria autenticando como
+una identidad con ese consentimiento permanente detras. Un registro propio solo podra hacer jamas
+una cosa: cambiar la presencia. **Registrar la aplicacion propia, siempre.**
+
+**Efecto secundario util**: tener `Application.ReadWrite.All` consentido significa que el registro
+se puede crear **desde PowerShell**, sin pisar el portal (POST a
+`https://graph.microsoft.com/v1.0/applications` con `isFallbackPublicClient=true` y el
+`requiredResourceAccess` de `Presence.ReadWrite`). El id del permiso delegado se busca en el
+service principal de Graph (`appId='00000003-0000-0000-c000-000000000000'`), nunca se hardcodea.
+
+**Fecha**: 2026-09-06
+
+---
+
+### TEC-008: Datos reales del tenant
+
+| Dato | Valor | Origen |
+|---|---|---|
+| Tenant (GUID) | `bcd2701c-aa9b-4d12-ba20-f3e3b83070c1` | `Get-MgContext`, 2026-09-06 |
+| Dominio | `comillas.edu` | cuenta `hvaler@comillas.edu` |
+| Graph (resource) | `00000003-0000-0000-c000-000000000000` | id fijo de Microsoft Graph |
+
+`Config.TenantId` usa el **GUID** y no el dominio: es inmune a cambios de dominio verificado y no
+depende de que `comillas.edu` siga siendo el dominio principal.
+
+**Fecha**: 2026-09-06
+
+---
+
 ## 4. Preferencias del proyecto
 
 ### PREF-001: Sin arquitectura de mas

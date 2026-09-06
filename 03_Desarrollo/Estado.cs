@@ -13,10 +13,12 @@ public static class Config
     public const string ClientId = "PON-AQUI-TU-CLIENT-ID";
 
     /// <summary>
-    /// Tenant concreto en lugar de "organizations": lleva la pantalla de inicio de sesión
-    /// directa a Comillas, sin el paso previo de elegir tipo de cuenta.
+    /// Tenant concreto (comillas.edu) en lugar de "organizations": lleva la pantalla de inicio
+    /// de sesión directa a Comillas, sin el paso previo de elegir tipo de cuenta.
+    /// Se usa el GUID y no el dominio porque es inmune a cambios de dominio verificado.
+    /// Verificado con Get-MgContext el 2026-09-06.
     /// </summary>
-    public const string TenantId = "comillas.edu";
+    public const string TenantId = "bcd2701c-aa9b-4d12-ba20-f3e3b83070c1";
 
     public static readonly string[] Scopes = { "Presence.ReadWrite" };
 

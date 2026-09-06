@@ -25,7 +25,7 @@
   "identity": {
     "_doc": "Cliente publico MSAL contra Entra ID con flujo de codigo de dispositivo. La app no expone endpoints ni autoriza a nadie: solo obtiene un token delegado (Presence.ReadWrite) para llamar a Microsoft Graph en nombre del propio usuario. Por eso defaultRoles va vacio.",
     "idp": "entra",
-    "authority": "https://login.microsoftonline.com/comillas.edu",
+    "authority": "https://login.microsoftonline.com/bcd2701c-aa9b-4d12-ba20-f3e3b83070c1",
     "claims": {
       "roles": "roles",
       "name": "name",

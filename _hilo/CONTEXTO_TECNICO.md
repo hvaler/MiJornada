@@ -50,7 +50,7 @@ en este repositorio.
 | **Proveedor** | Microsoft Entra ID |
 | **Libreria** | MSAL (`Microsoft.Identity.Client`) como **cliente publico** |
 | **Flujo** | Codigo de dispositivo (`AcquireTokenWithDeviceCode`) |
-| **Tenant** | `comillas.edu` (`Config.TenantId`). Se usa el tenant concreto y no `organizations` para que el login vaya directo, sin el paso de elegir tipo de cuenta |
+| **Tenant** | `bcd2701c-aa9b-4d12-ba20-f3e3b83070c1` (comillas.edu), en `Config.TenantId`. GUID y no dominio: inmune a cambios de dominio verificado. Confirmado con `Get-MgContext` el 2026-09-06 |
 | **Permiso** | Microsoft Graph delegado `Presence.ReadWrite` |
 | **Secreto de cliente** | **Ninguno, a proposito.** Un `.exe` no puede guardar secretos |
 | **Cache de token** | `%APPDATA%/MiJornada/msal.cache`, cifrado con DPAPI via `MsalCacheHelper` |
