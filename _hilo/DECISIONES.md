@@ -226,16 +226,30 @@ Cerrar la ventana con una jornada activa la envia a la bandeja del sistema; no t
 #### Decision
 
 Cinco ficheros en un namespace plano `MiJornada`, sin interfaces, sin inyeccion de dependencias y
-sin separacion en capas. Son unas 500 lineas.
+sin separacion en capas. Eran unas 500 lineas.
 
 #### Consecuencias
 
 - Se lee entero de una sentada.
-- `MainForm` y `PresenciaService` no son testeables sin introducir abstracciones. Asumido: los
+- `MainForm` y `GraphService` no son testeables sin introducir abstracciones. Asumido: los
   tests razonables son los de `Estado` (logica pura). Ver DT-011.
 
 > **Es una excepcion deliberada al estandar, no un descuido.** Meterle arquitectura a esto seria
 > peor. Si el proyecto creciera mucho, reabrir esta decision.
+
+#### Revision 2026-09-06 — la premisa ha cambiado
+
+**El proyecto ya no son 500 lineas: son ~2.780 en 11 ficheros.** Ha crecido 5,5x en un dia, que es
+exactamente el disparador que esta ADR se dejo escrito ("si el proyecto creciera mucho, reabrir").
+
+Se deja constancia **sin cambiar la decision**, porque los argumentos de fondo siguen en pie: un
+solo desarrollador, una sola ventana, sin despliegue y sin equipo al que coordinar. Pero el
+argumento "son 500 lineas" ya no vale, y conviene decirlo en vez de repetirlo.
+
+Lo que si empieza a notarse: `MainForm.cs` pasa de 700 lineas y mezcla interfaz, maquina de
+estados, sincronizacion y automatismos. **Si se vuelve a tocar a fondo, el primer corte natural
+es sacar de ahi los automatismos** (fichaje al desbloquear y temporizador de sincronizacion), que
+no son interfaz. Decision del usuario, no dada por hecha.
 
 ---
 

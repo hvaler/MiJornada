@@ -39,17 +39,18 @@ Este archivo guía a Claude Code (claude.ai/code) cuando trabaja con código en 
 | Campo | Valor |
 |-------|-------|
 | **Nombre** | Mi jornada |
-| **Versión** | 0.0.0 — sin publicar (el `.csproj` declara `1.0.0`) |
+| **Versión** | 0.10.0 (`.csproj`) — sin publicar |
 | **Tipo** | Aplicación de escritorio (WinForms, `WinExe`) |
 | **Framework** | .NET 8 (`net8.0-windows`) |
-| **Código** | `03_Desarrollo/` — 5 ficheros, namespace plano `MiJornada`, sin `.sln` |
+| **Código** | `03_Desarrollo/` — 11 ficheros, namespace plano `MiJornada`, sin `.sln` |
 | **Build** | ✅ Verde desde 2026-09-06 (0 errores, 0 advertencias) |
 | **Registro Entra** | ✅ `Mi jornada` — ClientId `dbcd6425-561b-4d91-a4d5-f0bb25b31241` |
 
-> ⚠️ **Compila y está configurada, pero nunca se ha ejecutado.** Los riesgos de runtime DT-004 a
-> DT-007 siguen sin verificar: un build verde no dice nada sobre ellos. Se comprueban en el primer
-> arranque real (`MiJornada.exe --minutos 2`, con Teams abierto). Leer `_hilo/DEUDA_TECNICA.md`
-> antes de tocar código.
+> ✅ **Verificada funcionalmente contra Microsoft Graph**: la máquina de estados completa, el
+> estado compartido entre equipos y los avisos. Lo que **sigue sin comprobar**: DT-007 (parpadeo
+> del anillo), el fichaje automático al desbloquear (necesita Win+L y la contraseña del usuario) y
+> el cierre de jornada por vencimiento desde el otro equipo. Leer `_hilo/DEUDA_TECNICA.md` antes
+> de tocar código.
 
 > Este proyecto es una **excepción deliberada** a varias reglas de `CLAUDE_BASE.md`: sin capas ni
 > DI (ADR-007), namespace plano, y el estado en disco local (ADR-004) — que aquí es correcto,

@@ -163,7 +163,7 @@ pone el "Fuera del trabajo" al final, que es justo lo que la aplicacion existe p
 
 ### DT-008 — Sin reintento en el POST a Graph
 
-**Fichero**: `03_Desarrollo/PresenciaService.cs`
+**Fichero**: `03_Desarrollo/GraphService.cs`
 
 Un fallo de red al final de la jornada deja la presencia sin cambiar **y el aviso ya se mostro**:
 el usuario cree que ha fichado la salida cuando no.
@@ -224,7 +224,7 @@ nuevo"; este codigo es preexistente y llego sin ellos.
 
 **Nota de alcance**: los candidatos razonables son `Estado` (la maquina de estados y el calculo
 del restante, que es logica pura y facil de testear) y la serializacion. `MainForm` y
-`PresenciaService` exigirian abstracciones que hoy no existen y que ADR-007 descarta a proposito.
+`GraphService` exigirian abstracciones que hoy no existen y que ADR-007 descarta a proposito.
 
 ---
 

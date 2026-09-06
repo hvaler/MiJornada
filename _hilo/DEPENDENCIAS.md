@@ -3,7 +3,7 @@
 > **Proposito**: stack, paquetes e integraciones, con la matriz de impacto de cada uno.
 > **Leer (Read) antes de modificar codigo que toque dependencias o integraciones.**
 
-> ⚠️ **Nada de esto esta verificado contra un build.** El proyecto nunca se ha compilado.
+> ✅ **Verificado contra un build verde y contra la API real de Graph** (2026-09-06).
 
 ---
 
@@ -94,7 +94,7 @@ Que se rompe si tocas cada fichero:
 |---|---|
 | **Teams abierto** en algun dispositivo | `setUserPreferredPresence` no hace nada. Falla silencioso: la app cree que lo cambio |
 | **Registro en Entra ID** con "flujos de cliente publico" activado | `AADSTS7000218` al pedir el token |
-| **`ClientId` real en `Estado.cs`** | La app no autentica. Hoy tiene el placeholder `PON-AQUI-TU-CLIENT-ID` (DT-003) |
+| **`ClientId` real en `Estado.cs`** | La app no autentica. Relleno con el registro propio desde 2026-09-06 (DT-003 resuelta) |
 | **Windows** (DPAPI, WinForms, bandeja) | El proyecto es `net8.0-windows`: no es multiplataforma ni pretende serlo |
 | **Conexion a internet** en el momento de fichar | El POST a Graph falla y **no hay reintento** (DT-008) |
 

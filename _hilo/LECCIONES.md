@@ -358,7 +358,7 @@ puede autenticarse contra ese mismo ClientId. Y como `Presence.ReadWrite` es un 
 **delegado**, cada persona solo puede cambiar **su propia** presencia: el token se emite a nombre
 de quien inicia sesion.
 
-Por eso `PresenciaService` saca el object ID de la cuenta autenticada en vez de tenerlo escrito.
+Por eso `GraphService` saca el object ID de la cuenta autenticada en vez de tenerlo escrito.
 Es lo que hace que el mismo `.exe` funcione para cualquiera sin tocar nada.
 
 **Lo que necesita un companero**: el `.exe` y nada mas. Ni PowerShell, ni el modulo de Graph, ni
@@ -566,7 +566,7 @@ tablas de color), asi que los emoji hay que elegirlos por su silueta. Ver M16.
 
 ### PREF-001: Sin arquitectura de mas
 
-Son unas 500 lineas. Nada de capas, interfaces ni inyeccion de dependencias, y el namespace es
+Nacio con unas 500 lineas (hoy ~2.780; ver la revision de ADR-007). Nada de capas, interfaces ni inyeccion de dependencias, y el namespace es
 plano (`MiJornada`). Es una **excepcion deliberada** a `CLAUDE_BASE.md`, no un descuido. Ver
 ADR-007.
 
