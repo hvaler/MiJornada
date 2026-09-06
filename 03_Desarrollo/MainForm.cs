@@ -68,6 +68,10 @@ public class MainForm : Form
     private bool _cerrandoDeVerdad;
     private bool _finalizando;
 
+    /// <summary>Si la jornada en curso la inicio el automatismo del desbloqueo, para poder
+    /// distinguirlo en el historico. Se reinicia al anotar.</summary>
+    private bool _fichajeAutomatico;
+
     /// <summary>Hora de fin sobre la que ya se avisó, para no repetir el aviso cada segundo.
     /// Al reanudar, la hora de fin se desplaza y vuelve a avisarse: es lo deseable.</summary>
     private DateTimeOffset? _finAvisado;
@@ -154,6 +158,7 @@ public class MainForm : Form
         _tray.DoubleClick += (_, _) => Restaurar();
         var menu = new ContextMenuStrip();
         menu.Items.Add("Abrir", null, (_, _) => Restaurar());
+        menu.Items.Add("Historico", null, (_, _) => MostrarHistorico());
         menu.Items.Add("Acerca de", null, (_, _) => MostrarAcercaDe());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Salir", null, (_, _) => { _cerrandoDeVerdad = true; Close(); });
@@ -231,7 +236,8 @@ public class MainForm : Form
                 return;
             }
 
-            if (!await IniciarAsync()) return;   // si Graph falla, el intento de hoy no se gasta
+            _fichajeAutomatico = true;
+            if (!await IniciarAsync()) { _fichajeAutomatico = false; return; }   // si Graph falla, el intento de hoy no se gasta
 
             _ajustes.UltimoAutoFichaje = DateTime.Today;
             _ajustes.Guardar();
@@ -321,6 +327,14 @@ public class MainForm : Form
     }
 
     // ------------------------------------------------------------------ ajustes
+
+    /// <summary>Histórico de jornadas (M17). Mismo criterio que Acerca de para el padre.</summary>
+    internal void MostrarHistorico()
+    {
+        using var dlg = new DialogoHistorico();
+        if (!Visible) dlg.StartPosition = FormStartPosition.CenterScreen;
+        dlg.ShowDialog(Visible ? this : null);
+    }
 
     /// <summary>Accesible desde el menu de la bandeja y desde el dialogo de ajustes.</summary>
     internal void MostrarAcercaDe()
@@ -531,6 +545,8 @@ public class MainForm : Form
         _estado.DuracionMinutos = (int)Math.Round(duracion.TotalMinutes);
         _estado.Fin = DateTimeOffset.Now + duracion;
         _estado.PausaDesde = null;
+        _estado.Inicio = DateTimeOffset.Now;   // para el historico (M17)
+        _estado.MinutosPausados = 0;
         _estado.Guardar();
         _finAvisado = null;   // jornada nueva: el aviso previo vuelve a estar pendiente
         Refrescar();
@@ -555,7 +571,11 @@ public class MainForm : Form
     private async Task ReanudarAsync()
     {
         if (_estado.PausaDesde is not null)
-            _estado.Fin = _estado.Fin!.Value + (DateTimeOffset.Now - _estado.PausaDesde.Value);
+        {
+            var parado = DateTimeOffset.Now - _estado.PausaDesde.Value;
+            _estado.Fin = _estado.Fin!.Value + parado;
+            _estado.MinutosPausados += (int)Math.Round(parado.TotalMinutes);
+        }
 
         _estado.Situacion = EstadoJornada.Activa;
         _estado.PausaDesde = null;
@@ -577,6 +597,11 @@ public class MainForm : Form
                 "Tu presencia volverá a la que calcula Teams.", "Mi jornada",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (r != DialogResult.Yes) return;
+
+            // Se anota ANTES de Limpiar(), que borra el inicio y las pausas. Y se anota aunque
+            // se cancele: cancelar significa "hoy no quiero estar fichado", pero el rato
+            // trabajado existió, y borrarlo del histórico falsearía la semana.
+            Anotar(FinJornada.Cancelada);
 
             _estado.Limpiar();
             Refrescar();
@@ -605,6 +630,8 @@ public class MainForm : Form
                 _finalizando = true;
                 try
                 {
+                    Anotar(FinJornada.Completada);   // antes de Limpiar(), que borra el inicio
+
                     _estado.Limpiar();
                     Refrescar();
 
@@ -618,7 +645,7 @@ public class MainForm : Form
 
                     Notificar("Jornada finalizada", _ajustes.MensajesDeAnimo
                         ? Mensajes.Fin()
-                        : "Tu estado ha cambiado a Fuera del trabajo.", 6000, Noche);
+                        : "Tu estado ha cambiado a Fuera del trabajo.", 1.0, Noche);
                 }
                 finally
                 {
@@ -644,9 +671,39 @@ public class MainForm : Form
     /// <para>Se usa una ventana propia y no <c>ShowBalloonTip</c> porque el modo <b>No molestar</b>
     /// de Windows descarta los globos de bandeja sin dejar rastro — ver <see cref="Aviso"/>.</para>
     /// </summary>
-    private void Notificar(string titulo, string mensaje, int milisegundos = 6000,
-        Color? acento = null) =>
-        Aviso.Mostrar(titulo, mensaje, milisegundos, Restaurar, acento ?? Morado);
+    /// <summary>
+    /// Anota la jornada que se está cerrando en el histórico (M17). Nunca lanza y nunca avisa:
+    /// perder una anotación es mucho menos grave que interrumpir el cierre de la jornada, que es
+    /// lo único que esta aplicación tiene que hacer bien.
+    /// </summary>
+    private void Anotar(FinJornada final)
+    {
+        try
+        {
+            var j = Historico.Desde(_estado, final, _fichajeAutomatico);
+            if (j is not null) Historico.Anotar(j);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Histórico: {ex.Message}");
+        }
+        finally
+        {
+            _fichajeAutomatico = false;
+        }
+    }
+
+    /// <param name="factor">
+    /// Multiplica la duración configurada. Los avisos que piden una decisión —el de fin
+    /// inminente— se quedan algo más; los meramente informativos, algo menos.
+    /// </param>
+    private void Notificar(string titulo, string mensaje, double factor = 1.0,
+        Color? acento = null)
+    {
+        var ms = (int)(Math.Clamp(_ajustes.SegundosAviso, 2, 120) * 1000 * factor);
+        Aviso.Mostrar(titulo, mensaje, ms, Restaurar, acento ?? Morado,
+            _ajustes.AvisoSeCierraSolo);
+    }
 
     /// <summary>
     /// Globo de aviso a N minutos del final, para poder cerrar cosas antes de que cambie el
@@ -665,7 +722,7 @@ public class MainForm : Form
         _finAvisado = _estado.Fin;
         Notificar("La jornada está a punto de terminar",
             $"Quedan {Math.Ceiling(restante.TotalMinutes):0} min. A las {_estado.Fin:HH:mm} " +
-            "pasarás a Fuera del trabajo.", 8000, Ambar);
+            "pasarás a Fuera del trabajo.", 1.4, Ambar);
     }
 
     private Task<bool> CambiarPresenciaAsync(string disponibilidad, string actividad) =>
@@ -741,7 +798,7 @@ public class MainForm : Form
             Hide();
             _tray.Visible = true;
             Notificar("Mi jornada sigue en marcha",
-                "Sigue contando en la bandeja. Doble clic en el icono para volver.", 4000);
+                "Sigue contando en la bandeja. Doble clic en el icono para volver.", 0.7);
             return;
         }
 

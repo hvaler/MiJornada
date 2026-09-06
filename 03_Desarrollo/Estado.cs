@@ -130,6 +130,19 @@ public class Ajustes
     public int AvisoMinutos { get; set; } = 15;
 
     /// <summary>
+    /// Cuánto se queda el aviso en pantalla, en segundos. Los 6 s de la primera versión eran los
+    /// de un globo de bandeja, y se quedaban cortos para un mensaje de dos líneas que además
+    /// aparece mientras estás mirando otra cosa.
+    /// </summary>
+    public int SegundosAviso { get; set; } = 12;
+
+    /// <summary>
+    /// Si el aviso se va solo. Con <c>false</c> se queda hasta que lo pulsas, para no perderte
+    /// ninguno — al precio de tener que quitarlo a mano.
+    /// </summary>
+    public bool AvisoSeCierraSolo { get; set; } = true;
+
+    /// <summary>
     /// Arrancar en la bandeja en vez de abrir la ventana. Per-equipo, NO se sincroniza.
     ///
     /// <para>Nótese que NO hay un "ArrancarConWindows": la verdad sobre eso es la existencia del
@@ -331,6 +344,16 @@ public class Estado
     public DateTimeOffset? PausaDesde { get; set; }
 
     /// <summary>
+    /// Cuándo se fichó. No se puede deducir de <see cref="Fin"/>, porque cada pausa lo desplaza:
+    /// sin este campo, una jornada con pausas mentiría sobre la hora de entrada. Hace falta para
+    /// el histórico (M17). <c>null</c> en estados escritos antes de existir el campo.
+    /// </summary>
+    public DateTimeOffset? Inicio { get; set; }
+
+    /// <summary>Minutos acumulados en pausa, que se suman al reanudar. Para el histórico.</summary>
+    public int MinutosPausados { get; set; }
+
+    /// <summary>
     /// Duración con la que arrancó ESTA jornada, en minutos. Se guarda aquí y no se recalcula
     /// de los ajustes para que el anillo sea correcto aunque la duración cambie a mitad —o
     /// aunque la jornada la iniciara otro equipo con otra configuración—. 0 = desconocida
@@ -419,6 +442,8 @@ public class Estado
         DuracionMinutos = otro.DuracionMinutos;
         Fin = otro.Fin;
         PausaDesde = otro.PausaDesde;
+        Inicio = otro.Inicio;
+        MinutosPausados = otro.MinutosPausados;
         Dispositivo = otro.Dispositivo;
         Actualizado = otro.Actualizado;
         Guardar(sellar: false);
@@ -429,6 +454,8 @@ public class Estado
         Situacion = EstadoJornada.SinFichar;
         Fin = null;
         PausaDesde = null;
+        Inicio = null;
+        MinutosPausados = 0;
         Guardar();
     }
 }

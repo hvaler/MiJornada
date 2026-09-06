@@ -54,6 +54,7 @@ public sealed class Aviso : Form
     private readonly Color _acento;
     private readonly Action? _alPulsar;
     private readonly int _duracion;
+    private readonly bool _seCierraSolo;
 
     private readonly Font _fGlifo = new("Segoe UI Emoji", 30f);
     private readonly Font _fTitulo = new("Segoe UI", 9f, FontStyle.Bold);
@@ -78,8 +79,10 @@ public sealed class Aviso : Form
     private const TextFormatFlags FlagsGlifo =
         TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix;
 
-    private Aviso(string titulo, string mensaje, int milisegundos, Action? alPulsar, Color acento)
+    private Aviso(string titulo, string mensaje, int milisegundos, Action? alPulsar, Color acento,
+                  bool seCierraSolo)
     {
+        _seCierraSolo = seCierraSolo;
         (_glifo, _mensaje) = Separar(mensaje);
         _titulo = titulo.ToUpperInvariant();   // el rótulo hace de etiqueta, no de frase
         _acento = acento;
@@ -123,10 +126,10 @@ public sealed class Aviso : Form
     /// (normalmente, abrir la ventana); si es <c>null</c>, el clic solo lo cierra.
     /// </summary>
     public static void Mostrar(string titulo, string mensaje, int milisegundos = 6000,
-        Action? alPulsar = null, Color? acento = null)
+        Action? alPulsar = null, Color? acento = null, bool seCierraSolo = true)
     {
         var aviso = new Aviso(titulo, mensaje, milisegundos, alPulsar,
-            acento ?? Color.FromArgb(91, 95, 199));
+            acento ?? Color.FromArgb(91, 95, 199), seCierraSolo);
 
         Abiertos.Add(aviso);
         aviso.Colocar();
@@ -203,8 +206,13 @@ public sealed class Aviso : Form
 
             case Fase.Esperando:
                 {
-                    _fraccionBarra = 1.0 - Math.Min(1.0, t / (double)_duracion);
                     Situar(0);
+
+                    // Sin cierre automático la tarjeta se queda hasta que la pulsen, y la barra
+                    // deja de tener sentido: se queda llena, marcando que esto no se va solo.
+                    if (!_seCierraSolo) break;
+
+                    _fraccionBarra = 1.0 - Math.Min(1.0, t / (double)_duracion);
                     Invalidate(new Rectangle(0, Height - Barra, Width, Barra));
                     if (t >= _duracion) Pasar(Fase.Saliendo);
                     break;

@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>MiJornada</AssemblyName>
     <RootNamespace>MiJornada</RootNamespace>
-    <Version>0.10.0</Version>
+    <Version>0.11.0</Version>
     <!-- Icono del .exe (explorador, barra de tareas, alt-tab) -->
     <ApplicationIcon>mijornada.ico</ApplicationIcon>
   </PropertyGroup>

@@ -48,6 +48,8 @@ public class DialogoAjustes : Form
     private readonly CheckBox _soloLaborables = new();
     private readonly TextBox _festivos = new();
     private readonly CheckBox _animo = new();
+    private readonly NumericUpDown _segundosAviso = new();
+    private readonly CheckBox _cierraSolo = new();
     private readonly Label _aviso = new();
     private readonly Button _guardar = new();
     private readonly ToolTip _pista = new();
@@ -217,27 +219,41 @@ public class DialogoAjustes : Form
     {
         var p = new TabPage("Presencia") { BackColor = Color.White };
 
-        p.Controls.Add(Negrita(16, 16, 320, "Al pausar, aparecer como"));
-        _pausa.SetBounds(16, 42, 200, 24);
+        // El área útil de la pestaña son 308 px de alto: todo lo de aquí está medido para caber
+        // sin recortes, y por eso los rótulos de ayuda son de una línea.
+        p.Controls.Add(Negrita(16, 10, 320, "Al pausar, aparecer como"));
+        _pausa.SetBounds(16, 32, 200, 24);
         _pausa.DropDownStyle = ComboBoxStyle.DropDownList;
         _pausa.FlatStyle = FlatStyle.Flat;
         _pausa.Items.AddRange(OpcionPresencia.ParaPausa);
         _pausa.SelectedItem = _ajustes.Pausa;
         p.Controls.Add(_pausa);
 
-        p.Controls.Add(Texto(16, 74, 330,
-            "Al terminar la jornada siempre se pone Fuera del trabajo."));
+        p.Controls.Add(Texto(16, 60, 330,
+            "Al terminar siempre se pone Fuera del trabajo.", null, 20));
 
-        p.Controls.Add(Negrita(16, 120, 320, "Aviso antes de terminar"));
-        Rueda(_avisoMinutos, 16, 146, 58, 0, 120, 5, p);
-        p.Controls.Add(Texto(78, 148, 260, "minutos antes"));
+        p.Controls.Add(Negrita(16, 88, 320, "Avisos"));
+
+        Rueda(_avisoMinutos, 16, 112, 58, 0, 120, 5, p);
+        p.Controls.Add(Texto(78, 114, 260, "minutos antes de terminar (0 = sin aviso)", null, 20));
         _avisoMinutos.Value = Math.Clamp(_ajustes.AvisoMinutos, 0, 120);
-        _pista.SetToolTip(_avisoMinutos, "0 = sin aviso");
 
-        p.Controls.Add(Texto(16, 178, 330, "Un aviso para poder cerrar cosas. 0 lo desactiva.", null, 22));
+        Rueda(_segundosAviso, 16, 140, 58, 2, 120, 5, p);
+        p.Controls.Add(Texto(78, 142, 260, "segundos en pantalla", null, 20));
+        _segundosAviso.Value = Math.Clamp(_ajustes.SegundosAviso, 2, 120);
 
-        p.Controls.Add(Negrita(16, 214, 320, "Mensajes"));
-        _animo.SetBounds(16, 240, 330, 22);
+        _cierraSolo.SetBounds(16, 168, 330, 22);
+        _cierraSolo.Text = "El aviso se cierra solo";
+        _cierraSolo.ForeColor = Tinta;
+        _cierraSolo.Checked = _ajustes.AvisoSeCierraSolo;
+        _cierraSolo.CheckedChanged += (_, _) => Validar();
+        p.Controls.Add(_cierraSolo);
+
+        p.Controls.Add(Texto(34, 190, 330,
+            "Si lo desmarcas, se queda hasta que lo pulses.", null, 20));
+
+        p.Controls.Add(Negrita(16, 218, 320, "Mensajes"));
+        _animo.SetBounds(16, 242, 330, 22);
         _animo.Text = "Un mensaje de ánimo al empezar y terminar";
         _animo.ForeColor = Tinta;
         _animo.Checked = _ajustes.MensajesDeAnimo;
@@ -246,9 +262,6 @@ public class DialogoAjustes : Form
         // Sin este enlace la funcionalidad no existe para quien la fuera a usar: nadie adivina
         // que hay un mensajes.json en %APPDATA%. El enlace lo crea con los actuales de plantilla
         // y lo abre, para editar sobre algo que ya funciona en vez de sobre una hoja en blanco.
-        //
-        // Va en una sola línea y no en dos: el área útil de la pestaña son ~306 px de alto y un
-        // rótulo explicativo encima dejaba el enlace cortado por abajo.
         var editar = new LinkLabel
         {
             Bounds = new Rectangle(14, 266, 330, 22),
@@ -523,6 +536,8 @@ public class DialogoAjustes : Form
             System.Globalization.CultureInfo.InvariantCulture);
         _ajustes.AutoFichajeSoloLaborables = _soloLaborables.Checked;
         _ajustes.MensajesDeAnimo = _animo.Checked;
+        _ajustes.SegundosAviso = (int)_segundosAviso.Value;
+        _ajustes.AvisoSeCierraSolo = _cierraSolo.Checked;
         _ajustes.Festivos = FestivosValidos();
         _ajustes.ArrancarMinimizado = _minimizado.Checked;
 

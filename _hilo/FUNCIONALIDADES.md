@@ -117,6 +117,8 @@ solo con el anillo y el botón; la configuración crece aquí sin ensuciarla.
 | Al pausar, aparecer como | Ausente · Vuelvo enseguida · Ocupado · No molestar | Ausente |
 | Fichar al desbloquear el equipo | sí / no | **no** |
 | Avisar N minutos antes del final | 0-120 (0 = sin aviso) | 15 |
+| Segundos que el aviso está en pantalla | 2-120 | 12 |
+| El aviso se cierra solo | sí / no | **sí** |
 | Arrancar con Windows | sí / no | **no** |
 | ...y hacerlo en la bandeja | sí / no | no |
 | Compartir la jornada entre equipos | sí / no | **sí** |
@@ -312,14 +314,80 @@ OneDrive). Ver **ADR-009** para el porque y las alternativas descartadas.
 **Sin verificar todavia**: el cierre por vencimiento desde el otro equipo. Usa la misma ruta de
 publicacion que la pausa, ya verificada, pero no se ha ejercitado.
 
+### M17 — Historico de jornadas
+
+**Ficheros**: `Historico.cs`, `DialogoHistorico.cs` · **Estado**: verificado 2026-09-06
+
+Lo ultimo que quedaba de la version de Power Apps, donde salia gratis porque los datos vivian en
+una lista de SharePoint. Aqui se anota a mano en `historico.json`, en la carpeta de datos. Se llega
+por el **menu de la bandeja > Historico**.
+
+Arriba, **la semana en curso** en grande: es la pregunta real ("¿cuanto llevo esta semana?"). Debajo
+el detalle por semanas, cada una con su total y sus dias, y dentro cada jornada con horario, pausas
+y duracion efectiva.
+
+Decisiones que no son obvias:
+
+- **Se anotan tambien las canceladas**, marcadas en ambar. Cancelar significa "hoy no quiero estar
+  fichado" —y por eso limpia la presencia— pero el rato trabajado **existio**: borrarlo falsearia
+  la semana. Distinguirlas es mas util que esconderlas.
+- **El dia es el del inicio**, no el del fin: una jornada que cruza la medianoche cuenta en el dia
+  en que se empezo, que es como lo cuenta uno.
+- **La media es por dia trabajado**, no por dia natural: descansar el viernes no deberia bajar la
+  media de la semana.
+- **La semana empieza en lunes**, calculado a mano y no con `Calendar.GetWeekOfYear`, que depende
+  de la cultura del equipo y podria dar semanas distintas en dos maquinas.
+- **Anotar nunca puede impedir fichar**: va despues de cambiar la presencia, dentro de try/catch y
+  sin avisar de nada. Perder una anotacion es mucho menos grave que dejar la presencia sin cambiar.
+- Tope de 1500 anotaciones (cinco anos largos): es un JSON que se lee entero en memoria.
+- Se pinta a mano en un panel con desplazamiento y no con `DataGridView`: una rejilla traeria
+  ordenacion, seleccion y aspecto de hoja de calculo, y aqui no se edita nada, se lee.
+
+Para esto hubo que anadir dos campos a `Estado`: **`Inicio`** (no se puede deducir de `Fin`, porque
+cada pausa lo desplaza: sin el, una jornada con pausas mentiria sobre la hora de entrada) y
+**`MinutosPausados`**, que se acumula al reanudar.
+
+**Comprobado con aritmetica, no a ojo**: una jornada de 3 h con 40 min de pausa da 140 min
+trabajados; y una que se cierra **estando en pausa** cuenta tambien la pausa en curso (10 previos +
+30 en curso = 40, y 120 - 40 = 80). Ademas: sin fichero sale la pantalla de "todavia no hay
+jornadas" explicando por que esta vacia, y con el fichero **roto a proposito** devuelve una lista
+vacia sin lanzar.
+
 ### M16 — Avisos con mensaje de animo
 
 **Ficheros**: `Aviso.cs`, `Mensajes.cs` · **Estado**: verificado 2026-09-06
 
-Al empezar y al terminar la jornada aparece un aviso no bloqueante con un mensaje corto y un
-emoji, elegido al azar entre **veinticuatro de cada tipo**. Se desactiva en Ajustes > Presencia
+Al empezar y al terminar la jornada aparece un aviso no bloqueante con un mensaje y un emoji,
+elegido al azar entre **veinticuatro de cada tipo**. Se desactiva en Ajustes > Presencia
 (`MensajesDeAnimo`, marcado por defecto); los avisos **funcionales** —el de "a punto de terminar"
 y el de "sigue en marcha en la bandeja"— no dependen de esa casilla y salen siempre.
+
+#### Cuanto dura y si se va solo
+
+| Ajuste | Valores | Por defecto |
+|---|---|---|
+| `SegundosAviso` — cuanto se queda en pantalla | 2 a 120 s | **12 s** |
+| `AvisoSeCierraSolo` — si se va solo o espera un clic | si / no | **si** |
+
+Los 6 s de la primera version eran los de un globo de bandeja y se quedaban cortos: el aviso
+aparece mientras estas mirando otra cosa, y para cuando giras la vista ya se ha ido. Con
+`AvisoSeCierraSolo` desmarcado la tarjeta **espera** a que la pulses, y la barra de tiempo se queda
+llena en vez de vaciarse, que es la senal de que eso no se va solo.
+
+Cada tipo de aviso multiplica la duracion configurada: el de fin inminente dura un 40 % mas
+(pide una decision) y el de "sigue en la bandeja" un 30 % menos (es informativo).
+
+#### El tono de los mensajes
+
+La primera version eran frases de tres palabras: "Manos a la obra", "En camino". Tan cortas que no
+decian nada, y **el usuario lo dijo claro: poco profundas**. Se reescribieron los 48 con dos
+tiempos —una frase que situa y otra que aporta algo—, manteniendo lo que si tenia sentido evitar:
+el aleccionamiento generico tipo "el exito es la suma de pequenos esfuerzos", que ademas de cansar
+a la tercera vez no dice nada de **este** momento. La diferencia entre profundo y pesado esta en
+hablar de lo concreto: fichar, el correo, la hora de cerrar.
+
+Medidos los 48 contra el ancho util de 306 px: **42 caben en dos lineas y 6 necesitan tres**
+(la tarjeta crece de 104 a 124 px). Ninguno pasa de tres.
 
 #### Mensajes propios: `mensajes.json`
 
@@ -470,8 +538,7 @@ Lo tachado ya esta hecho.
 - ~~**Estado compartido entre equipos**~~ — HECHO 2026-09-06 (M12, ADR-009). No estaba en la
   lista original: salio al pensar que hacer con dos equipos y Teams abierto en los dos.
 - ~~**Avisos con mensaje de animo**~~ — HECHO 2026-09-06 (M16). Tampoco estaba en la lista.
-- **Historico de jornadas** en el propio JSON, con resumen semanal. La version de Power Apps lo
-  tenia a mano por la lista de SharePoint y aqui se perdio.
+- ~~**Historico de jornadas** con resumen semanal~~ — HECHO 2026-09-06 (M17).
 - **Leer la presencia real** con `GET /users/{id}/presence` en vez de asumir que el cambio se
   aplico. Detectaria el caso de Teams cerrado, que hoy pasa en silencio.
 
