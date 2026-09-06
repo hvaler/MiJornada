@@ -154,6 +154,36 @@ proyecto, ejecutar `dsregcmd /status`. Si el equipo sigue sin unir, la respuesta
 
 ---
 
+### ERR-006: "No hay ninguna cuenta autenticada" con la caché sin registrar
+
+**Sintoma**: al pulsar "Iniciar jornada" sale el diálogo **"No hay ninguna cuenta autenticada"**,
+aunque el token esté cacheado y la sesión siga siendo válida.
+
+**Causa**: `ObtenerObjectIdAsync` llamaba a `GetAccountsAsync()` **sin llamar antes a
+`RegistrarCacheAsync()`**. Sin registrar, MSAL consulta una caché en blanco —la de disco ni se ha
+leído— y responde que no hay cuentas. Todos los demás métodos que leen cuentas
+(`ObtenerTokenSilenciosoAsync`, `ObtenerTokenAsync`) sí empezaban registrando; ese se quedó fuera.
+
+**Por que tardo tanto en aparecer, que es lo interesante**: estaba **tapado por la
+sincronizacion**. Como `SincronizarEntreEquipos` viene activado por defecto, la sincronizacion del
+arranque (`Shown`) pasaba por la ruta del token y registraba la cache **de rebote**, con lo que
+para cuando el usuario pulsaba el boton ya estaba todo en su sitio. El fallo solo se manifiesta
+con la sincronizacion **desactivada** — un ajuste normal, que cualquiera puede desmarcar — o si se
+pulsa el boton antes de que termine la sincronizacion del arranque, que ademas es una carrera.
+
+**Solucion**: `await RegistrarCacheAsync();` al principio de `ObtenerObjectIdAsync`. Es
+idempotente (`_cacheRegistrada`), asi que llamarlo de mas no cuesta nada.
+
+**La leccion general**: una dependencia satisfecha **por efecto colateral de otra cosa** no es una
+dependencia satisfecha. Si un metodo necesita que la cache este registrada, que la registre el; no
+vale confiar en que "alguien ya habra pasado por ahi". Y para encontrar estos casos hay que
+**probar con los ajustes en sus valores no-por-defecto**: aqui el fallo aparecio al desactivar la
+sincronizacion para una prueba, no probando la funcionalidad de autenticacion.
+
+**Fecha**: 2026-09-06
+
+---
+
 ### ERR-004: `AADSTS65002` con el conector "HTTP con Microsoft Entra ID"
 
 **Sintoma**: al crear la conexion contra Graph desde Power Platform.

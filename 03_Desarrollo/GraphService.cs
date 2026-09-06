@@ -143,6 +143,18 @@ public class GraphService
     /// <summary>Devuelve el object ID del usuario autenticado, sin llamadas extra.</summary>
     private async Task<string> ObtenerObjectIdAsync()
     {
+        // Registrar la caché ANTES de preguntar por las cuentas. Sin esto MSAL mira una caché
+        // en blanco —la de disco ni se ha leído— y responde que no hay ninguna cuenta, aunque
+        // la haya. Es idempotente, así que llamarlo aquí no cuesta nada.
+        //
+        // Faltaba, y el fallo estuvo oculto detrás de la sincronización: como
+        // SincronizarEntreEquipos viene activado, la sincronización del arranque pasaba por la
+        // ruta del token y registraba la caché de rebote. Con la sincronización desactivada
+        // —que es un ajuste normal— pulsar "Iniciar jornada" fallaba con "No hay ninguna cuenta
+        // autenticada". También había carrera con la sincronización activada, si se pulsaba
+        // antes de que terminara.
+        await RegistrarCacheAsync();
+
         var cuentas = await _app.GetAccountsAsync();
         var cuenta = cuentas.FirstOrDefault()
             ?? throw new InvalidOperationException("No hay ninguna cuenta autenticada.");
