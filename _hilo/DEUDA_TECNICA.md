@@ -19,10 +19,22 @@
 **Estado**: el proyecto **compila** (0 errores, 0 advertencias) y **ya esta configurado**: tiene
 ClientId y tenant reales. Nada impide ejecutarlo.
 
-**Lo que falta ahora es ejecutarlo.** DT-004 a DT-007 son riesgos de *runtime*: un build verde no
-dice absolutamente nada sobre ellos, y siguen siendo **sospechas sin comprobar**. Se confirman o
-se descartan en el primer arranque real, idealmente con `MiJornada.exe --minutos 2` y Teams
-abierto.
+### Primer arranque real — 2026-09-06
+
+Se ejecuto `MiJornada.exe --minutos 2` y se capturo la ventana con `PrintWindow`.
+
+| Comprobado | Resultado |
+|---|---|
+| Arranque | ✅ Sin excepciones. Ventana 356×469, titulo "Mi jornada" |
+| Dibujado del anillo (GDI+) | ✅ Se pinta el circulo de pista completo, centrado |
+| **DT-004** (rectangulo gris sobre el anillo) | ✅ **No se manifiesta.** Fondo limpio bajo `--:--:--` |
+| Boton principal y rotulo | ✅ "Sin fichar" + "Iniciar jornada" en morado |
+| Cierre con jornada en `SinFichar` | ✅ `WM_CLOSE` termina el proceso, como debe |
+
+**Sigue SIN comprobar** (requiere pulsar el boton, lo que autentica y **cambia la presencia real**
+en Teams): el flujo de codigo de dispositivo, la llamada a Graph, DT-005 (`async void`), DT-006
+(`Clipboard` vacio), el globo de notificacion, la bandeja, y el ciclo pausa/reanudar/cancelar.
+DT-007 (parpadeo) no es evaluable en una captura estatica: hay que mirar la ventana unos segundos.
 
 ---
 
@@ -77,7 +89,7 @@ reporta ninguna vulnerabilidad conocida en esas versiones.
 
 ## 🟡 Medias
 
-### DT-004 — Transparencia de las etiquetas sobre el anillo
+### DT-004 — Transparencia de las etiquetas sobre el anillo — **NO SE MANIFIESTA** (2026-09-06)
 
 **Fichero**: `03_Desarrollo/MainForm.cs`
 
@@ -85,9 +97,13 @@ WinForms no tiene transparencia real: un `Label` con `BackColor = Transparent` p
 su **padre**. La cuenta atras esta como hija del panel del anillo (`_lblTiempo.Parent = _anillo`)
 precisamente por eso.
 
-**Sintoma si falla**: un rectangulo gris sobre el anillo.
-**Como se resuelve**: dibujar el texto en el `Paint` del panel con `DrawString`, en vez de usar
-un `Label`.
+**Verificado en el primer arranque real (2026-09-06)**: capturada la ventana con `PrintWindow`,
+la cuenta atras (`--:--:--`) aparece sobre el anillo con fondo limpio. **No hay rectangulo gris.**
+La solucion de hacer el `Label` hijo del panel funciona.
+
+Se deja anotado y no se borra porque el riesgo vuelve en cuanto alguien anada otra etiqueta sobre
+el anillo sin asignarle `Parent = _anillo`. Si eso pasa, la salida es dibujar el texto en el
+`Paint` del panel con `DrawString`.
 
 ---
 
