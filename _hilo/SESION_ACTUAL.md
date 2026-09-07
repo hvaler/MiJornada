@@ -9,7 +9,7 @@
 
 | Campo | Valor |
 |-------|-------|
-| **Fecha** | 2026-09-06 |
+| **Fecha** | 2026-09-06 y 07 (fin de semana) |
 | **Usuario** | hvaler |
 | **Evolutivo activo** | ninguno |
 | **Duración aprox.** | sesión larga (varias tandas) |
@@ -18,18 +18,29 @@
 
 ## Resumen de lo Trabajado
 
-De proyecto **nunca compilado** a versión 0.10.0 verificada contra la API real, en un día.
+De proyecto **nunca compilado** a la **0.11.0 instalada en el equipo y con el backlog original
+cerrado (M1–M18)**, en un fin de semana. La aplicación está instalada de verdad, vía
+`instalar.ps1`, en `%LOCALAPPDATA%\Programs\MiJornada` — el `.exe` de `bin\Debug` ya no es el que
+se usa.
 
 ### Objetivos cumplidos
 
-- [x] Onboarding al ecosistema Ovillo y repositorio en GitHub
-- [x] Primer build (verde a la primera) y registro **propio** en Entra ID
+- [x] Onboarding al ecosistema Ovillo, repositorio en GitHub, primer build, registro propio en Entra
 - [x] Ciclo completo de jornada verificado contra Graph: iniciar, pausar, reanudar, cancelar, fin
-- [x] Icono propio, icono de bandeja dinámico y ajustes en diálogo aparte con pestañas
-- [x] Fichaje automático al desbloquear, con franja horaria, fines de semana y festivos
+- [x] Icono propio, icono de bandeja dinámico, ajustes en pestañas, duración por día, calendario
 - [x] Estado compartido entre equipos por la carpeta de aplicación de OneDrive (ADR-009)
-- [x] Duración por día de la semana, aviso antes del final y arranque con Windows
-- [x] Avisos propios con mensaje de ánimo (M16) y limpieza de la presencia al cancelar
+- [x] Avisos propios rediseñados: banda de color, emoji a 30 pt, animación, barra de tiempo,
+      duración y autocierre configurables (M16)
+- [x] 48 mensajes con fondo, editables vía `mensajes.json` desde Ajustes
+- [x] Cancelar **limpia** la presencia preferida (antes te dejaba fijado en Fuera del trabajo)
+- [x] **Histórico de jornadas** con resumen semanal (M17)
+- [x] **Instalador y desinstalador** sin administrador (M18), ciclo completo verificado
+- [x] DT-007 (parpadeo del anillo) **medida y resuelta**: doble búfer; de 5 destellos/6 s a 0
+- [x] Fichaje al desbloquear **verificado con Win+L real** (M10)
+- [x] Dos fallos reales encontrados y corregidos: ERR-006 (caché MSAL sin registrar, tapado por
+      la sincronización) y TEC-017 (`.ps1` sin BOM → mojibake en PowerShell 5.1)
+- [x] README de portada reescrito (decía "Plantilla de Proyecto Ovillo") y **ADR-010**: el andamio
+      deja de versionarse — de 532 ficheros a 52; clon limpio desde GitHub compila y arranca
 
 ### Decisiones tomadas
 
@@ -44,6 +55,14 @@ De proyecto **nunca compilado** a versión 0.10.0 verificada contra la API real,
   descarta los globos sin dejar rastro (TEC-016).
 - **D6**: Cancelar **limpia** la presencia preferida en vez de fijar `Offline`/`OffWork`, para que
   la aplicación deje de opinar cuando la jornada se da por no ocurrida.
+- **D7**: Los mensajes son **locales y editables** (`mensajes.json`), no descargados de una API:
+  otro género, sin emoji, largos, y meterían red en el momento de fichar.
+- **D8**: El histórico **anota también las canceladas**, marcadas: el rato trabajado existió y
+  borrarlo falsearía la semana.
+- **D9**: Instalador **por usuario y sin administrador**, autocontenido por defecto (155 MB antes
+  que pedirle a nadie un runtime), y sin crear registro de Entra (ya hay uno para todo el tenant).
+- **D10 / ADR-010**: el **andamio de Ovillo no se versiona** en este repositorio; vive en la copia
+  de trabajo y lo repone su instalador.
 
 ---
 
@@ -53,35 +72,39 @@ De proyecto **nunca compilado** a versión 0.10.0 verificada contra la API real,
 
 ```
 ID: ninguno activo
-Fase: desarrollo — version 0.10.0
-Progreso: funcionalmente verificada contra la API real de Graph
+Fase: desarrollo — versión 0.11.0, INSTALADA en HUGOVALER
+Progreso: backlog original cerrado (M1–M18)
 Bloqueadores: ninguno
 ```
 
 ### Tareas pendientes prioritarias
 
-1. [ ] **Histórico de jornadas** con resumen semanal. Es lo único del backlog original que queda.
-2. [ ] **Instalador**: registro de Entra, despliegue del `.exe` y acceso directo. Hoy todo eso es
-       manual, y es lo que separa "funciona en mi equipo" de "se puede dar a alguien".
-3. [ ] Verificar lo que exige una persona delante (ver abajo).
-4. [ ] Decidir si merecen la pena `Mutex` de instancia única (DT-009), reintento en el POST
-       (DT-008) y registro de actividad (DT-010).
+1. [ ] **Verificar el cierre de jornada desde el otro equipo** — lo ÚNICO sin comprobar de todo el
+       proyecto. Exige una segunda máquina real (el sufijo "· EQUIPO" tampoco está probado).
+2. [ ] Decidir sobre robustez: reintento en el POST (DT-008), instancia única (DT-009), registro
+       de actividad (DT-010), tests (DT-011).
+3. [ ] Opcional: **firmar el `.exe`** para que SmartScreen no avise en equipos ajenos. Opciones ya
+       investigadas (2026-09-06): preguntar si la organización ya tiene certificado; Azure
+       Artifact Signing (~10 $/mes, verificar disponibilidad en España); autofirmado + GPO.
+4. [ ] **ADR-007, revisión pendiente de decisión del usuario**: `MainForm.cs` pasa de 700 líneas;
+       el corte natural serían los automatismos. No hacer sin que lo pida.
 
 ### Notas importantes
 
-- **Lo que sigue SIN verificar**, y por qué: DT-007 (parpadeo del anillo, hay que mirarlo), el
-  fichaje automático al desbloquear (necesita Win+L y la contraseña del usuario) y el cierre de
-  jornada por vencimiento **desde el otro equipo** (las dos instancias de prueba corrían en la
-  misma máquina, así que el sufijo "· EQUIPO" tampoco está probado de verdad).
+- **La aplicación está instalada de verdad** en `%LOCALAPPDATA%\Programs\MiJornada`
+  (`instalar.ps1`, con entrada en "Aplicaciones instaladas"). Para probar cambios: recompilar y
+  lanzar el de `bin\Debug` con `--datos <carpeta>` — o reinstalar.
 - **Para probar hace falta Teams abierto**: `setUserPreferredPresence` responde correctamente y
   no cambia nada si no hay sesión de presencia activa. Es un fallo silencioso.
 - **Al probar, restaurar la presencia al terminar.** Las pruebas dejan la presencia *fijada*;
-  se suelta con `clearUserPreferredPresence`. Ver TEC-004.
+  se suelta con `clearUserPreferredPresence`. Ver TEC-004 (y cancelar la jornada ya la limpia).
 - **Los avisos no pueden usar globos de bandeja**: con No molestar, Windows los descarta sin
-  dejar rastro. Ver TEC-016 antes de tocar `Aviso.cs`.
+  dejar rastro. Ver TEC-016 antes de tocar `Aviso.cs`. Y los emoji, en monocromo antes de añadir.
+- **El andamio de Ovillo no se versiona** (ADR-010): que `git status` ignore `.claude/` y
+  compañía es lo esperado. Los `.ps1` del instalador van en UTF-8 **con** BOM (TEC-017); los JSON
+  de `_hilo`, **sin** BOM.
 - Antes de proponer cambios de enfoque, leer `_hilo/DECISIONES.md`: hay diez decisiones tomadas
-  con su porqué, varias tras haber probado la alternativa. **ADR-007 tiene una revisión**: la
-  premisa "son 500 líneas" ya no se sostiene (hoy ~2.780).
+  con su porqué, varias tras haber probado la alternativa.
 
 ---
 
@@ -89,6 +112,7 @@ Bloqueadores: ninguno
 
 | Fecha | Usuario | Trabajo principal |
 |-------|---------|-------------------|
+| 2026-09-07 | hvaler | Histórico (M17), instalador (M18), DT-007 resuelta, Win+L verificado, ADR-010 (repo a 52 ficheros) |
 | 2026-09-06 | hvaler | Avisos propios con mensaje de ánimo (M16) y limpieza de la presencia al cancelar |
 | 2026-09-06 | hvaler | Estado compartido entre equipos (ADR-009), duración por día, calendario del fichaje |
 | 2026-09-06 | hvaler | Primer build, registro propio en Entra y verificación funcional contra Graph |

@@ -128,7 +128,7 @@
     ],
     "sprint_actual": null,
     "version_actual": "0.11.0",
-    "ultima_actualizacion": "2026-09-06",
+    "ultima_actualizacion": "2026-09-07",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
   "acceso_bd": {
@@ -234,7 +234,7 @@
     "funcionalidades_en_progreso": [],
     "bloqueadores": [],
     "proxima_entrega": null,
-    "notas_sprint": "2026-09-06: de 'nunca compilado' a la version 0.10.0 funcionalmente verificada, en una sesion. Onboarding, build, registro propio en Entra, maquina de estados completa contra la API real, estado compartido entre equipos, automatismos y avisos propios. Sin comprobar: DT-007 (parpadeo del anillo), el fichaje automatico al desbloquear (necesita Win+L y la contrasena del usuario) y el cierre de jornada desde el otro equipo (las dos instancias de prueba corrian en la misma maquina)."
+    "notas_sprint": "2026-09-06/07: de 'nunca compilado' a la 0.11.0 instalada y con el backlog original CERRADO (M1-M18), en un fin de semana. Verificado todo salvo una cosa: el cierre de jornada desde un segundo equipo real. DT-007 resuelta midiendo pixeles, Win+L probado con el usuario delante, instalador con ciclo instalar/desinstalar/reinstalar comprobado, y clon limpio desde GitHub que compila y arranca."
   },
   "evolutivoActivo": null,
   "evolutivos": {
@@ -260,16 +260,30 @@
   },
   "ultimaSesion": {
     "_doc": "Se actualiza con /pausar y se lee con /continuar",
-    "fecha": "2026-09-06",
+    "fecha": "2026-09-07",
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
-    "proximoPaso": "Del backlog quedan: historico de jornadas con resumen semanal, y el INSTALADOR (registro de Entra, despliegue del .exe, acceso directo).",
-    "resumenSesion": "Sesion larga: onboarding al ecosistema, repositorio en GitHub, primer build, registro propio en Entra, verificacion funcional completa contra Graph, y todo el backlog salvo el historico y el instalador (icono propio, ajustes en dialogo con pestanas, icono de bandeja dinamico, fichaje automatico al desbloquear con franja y calendario, estado compartido entre equipos, duracion por dia, avisos con mensaje de animo y limpieza de la presencia al cancelar).",
+    "proximoPaso": "El backlog original esta CERRADO (M1-M18). Queda: verificar el cierre de jornada desde un segundo equipo real, decidir sobre DT-008/009/010/011 (reintento, instancia unica, registro, tests), y opcionalmente firmar el .exe (opciones en la conversacion del 2026-09-06: certificado propio de la organizacion, Azure Artifact Signing ~10$/mes, autofirmado+GPO). ADR-007 tiene una revision pendiente de decision del usuario (MainForm pasa de 700 lineas; corte natural: los automatismos).",
+    "resumenSesion": "Version 0.11.0 y backlog original cerrado. Avisos rediseñados (tarjeta con banda de color, emoji a 30pt, animacion, barra de tiempo, duracion y autocierre configurables), 48 mensajes con fondo editables via mensajes.json, historico de jornadas con resumen semanal (M17), instalador/desinstalador sin administrador (M18), DT-007 medido y resuelto (doble bufer), fichaje al desbloquear verificado con Win+L real, cancelar limpia la presencia preferida, y dos fallos reales encontrados y corregidos: ERR-006 (cache MSAL sin registrar, tapado por la sincronizacion) y TEC-017 (ps1 sin BOM => mojibake en PS 5.1). Ademas: README de portada reescrito (decia 'Plantilla de Proyecto Ovillo') y ADR-010: el andamio de Ovillo deja de versionarse, de 532 ficheros a 52; clon limpio desde GitHub compila y arranca, verificado.",
     "archivosModificados": [
-      "_hilo/METRICAS.json"
+      "03_Desarrollo/Aviso.cs",
+      "03_Desarrollo/DialogoAjustes.cs",
+      "03_Desarrollo/DialogoHistorico.cs",
+      "03_Desarrollo/Estado.cs",
+      "03_Desarrollo/GraphService.cs",
+      "03_Desarrollo/Historico.cs",
+      "03_Desarrollo/MainForm.cs",
+      "03_Desarrollo/Mensajes.cs",
+      "02_Entorno/instalar.ps1",
+      "02_Entorno/desinstalar.ps1",
+      "02_Entorno/README.md",
+      "README.md",
+      "CLAUDE.md",
+      ".gitignore",
+      "_hilo/*"
     ],
-    "notas": "PresenciaService.cs paso a llamarse GraphService.cs al generalizarlo para toda la API, no solo la presencia."
+    "notas": "La aplicacion esta INSTALADA en HUGOVALER via instalar.ps1 (LOCALAPPDATA\\Programs\\MiJornada, entrada en Aplicaciones instaladas). El .exe de bin/Debug ya no es el que se usa: para probar cambios, recompilar y reinstalar o lanzar el de Debug con --datos."
   },
   "metricas": {
     "cobertura_tests": null,
@@ -282,8 +296,9 @@
     "_doc": "Claude muestra estas alertas al iniciar sesion",
     "activas": [
       "Estado compartido entre equipos activo (ADR-009). Al abrir la app en un equipo nuevo pedira consentimiento una vez: el conjunto de scopes cambio (se anadio Files.ReadWrite.AppFolder).",
-      "Sin verificar: el cierre de jornada por vencimiento desde otro equipo, el fichaje automatico al desbloquear (Win+L) y DT-007 (parpadeo).",
-      "Los avisos NO usan globos de bandeja: con No molestar activado Windows los descarta sin dejar rastro (ni llegan al centro de notificaciones). Se usa una ventana propia, Aviso.cs. Comprobado en HUGOVALER el 2026-09-06."
+      "Lo UNICO sin verificar: el cierre de jornada por vencimiento desde otro equipo (exige una segunda maquina real; el sufijo '· EQUIPO' tampoco). Win+L y DT-007 quedaron verificados el 2026-09-06.",
+      "Los avisos NO usan globos de bandeja: con No molestar activado Windows los descarta sin dejar rastro (ni llegan al centro de notificaciones). Se usa una ventana propia, Aviso.cs (TEC-016).",
+      "El andamio de Ovillo NO se versiona en este repositorio (ADR-010): .claude/, Documentos_Base/ y las carpetas de fase estan en .gitignore y viven solo en la copia de trabajo. git status no los muestra y es lo esperado."
     ]
   },
   "historial_modos": [

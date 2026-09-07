@@ -171,7 +171,12 @@ Dos cosas que hacen que esto no se rompa a las horas:
 
 ### M10 — Fichaje automatico al desbloquear
 
-**Fichero**: `MainForm.Sesion_Cambiada` · **Estado**: implementado, **sin probar de punta a punta**
+**Fichero**: `MainForm.Sesion_Cambiada` · **Estado**: verificado 2026-09-06, de punta a punta
+(Win+L real con el usuario delante: al desbloquear arranco la jornada a las 21:18:03 y
+`UltimoAutoFichaje` quedo marcado, asi que no repite en el dia). Ojo al probarlo: era domingo por
+la noche, y hubo que abrir la franja y desactivar "solo laborables" para que el automatismo no se
+negara con razon — con los ajustes de fabrica el test no habria probado el desbloqueo sino el
+calendario.
 
 Escucha `SystemEvents.SessionSwitch` y ficha solo al desbloquear el equipo. Es lo que convierte
 la aplicacion en algo que no hay que acordarse de usar.
