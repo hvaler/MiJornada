@@ -1,279 +1,117 @@
-# Plantilla de Proyecto Ovillo
+# Mi jornada
 
-Plantilla estándar de proyectos del ecosistema **Ovillo**.
+Aplicación de escritorio para Windows que pone tu presencia de Teams en **Disponible** al empezar
+la jornada y en **Fuera del trabajo** al terminarla, con una cuenta atrás de 7 horas por medio.
 
-Esta plantilla está **autocontextualizada**: contiene toda la información necesaria para que Claude Code entienda el proyecto y asista en el desarrollo.
+El problema que resuelve: **no aparecer disponible fuera del horario de trabajo** sin tener que
+acordarse de cambiar el estado a mano.
+
+![La ventana principal](01_Diseno/mijornada-jornada-activa-2026-09-06.png)
+
+Habla directamente con Microsoft Graph. Sin Power Platform, sin flujos y sin licencias premium
+— fue la tercera implementación de la misma idea, y la primera que no cuesta dinero al mes.
 
 ---
 
-## 🚀 Instalación Rápida
-
-### Proyecto Existente (Recomendado)
+## Instalar
 
 ```powershell
-# 1. Ir a la carpeta del proyecto
-cd C:\MiProyecto
-
-# 2. Instalar paquete Ovillo
-irm <distribution.baseUrl>/install.ps1 | iex
-
-# 3. Abrir Claude Code y ejecutar onboarding
-claude
-/onboarding
-
-# 4. Integrar en Visual Studio (automático o manual)
-.\.claude\commands\integracion-vs.ps1
-
-# 5. Abrir Visual Studio para ver las carpetas
+git clone https://github.com/hvaler/MiJornada
+cd MiJornada\02_Entorno
+.\instalar.ps1
 ```
 
-### Proyecto Nuevo
+**No hace falta ser administrador.** Instala solo para el usuario actual en
+`%LOCALAPPDATA%\Programs\MiJornada`. Por defecto publica un `.exe` autocontenido, así que funciona
+en un equipo sin .NET instalado. Detalles y opciones: [`02_Entorno/README.md`](02_Entorno/README.md).
 
-```powershell
-# 1. Crear carpeta y descargar plantilla
-mkdir C:\MiNuevoProyecto
-cd C:\MiNuevoProyecto
-irm <distribution.baseUrl>/install.ps1 | iex
-
-# 2. Crear proyecto .NET en 03_Desarrollo/
-dotnet new sln -n MiProyecto -o 03_Desarrollo
-# ... crear proyectos
-
-# 3. Abrir Claude Code y ejecutar onboarding
-claude
-/onboarding
-```
+La primera vez pide un **código de dispositivo**: se copia, se pega en el navegador y no lo vuelve
+a pedir. No es un capricho — el flujo interactivo normal no funciona en equipos no gestionados por
+el tenant, y eso está documentado en `_hilo/DECISIONES.md` (ADR-002).
 
 ---
 
-## Flujo Completo de Instalación
+## Qué hace
+
+| | |
+|---|---|
+| **Iniciar jornada** | Presencia a `Available` y cuenta atrás de 7 h (configurable, y distinta por día si quieres) |
+| **Pausar / Reanudar** | Congela el restante y pone el estado que elijas. Al reanudar, la hora de fin se desplaza |
+| **Fin de la cuenta** | Presencia a `Offline`/`OffWork` — lo que Teams muestra como Fuera del trabajo |
+| **Cancelar** | Da la jornada por no ocurrida y **suelta** la presencia: Teams vuelve a calcularla sola |
+
+Y alrededor de eso:
+
+- **Anillo de progreso** que cuenta lo que queda, también dibujado en el icono de la bandeja, para
+  verlo sin abrir la ventana.
+- **Fichaje automático al desbloquear el equipo**, con franja horaria, fines de semana y festivos.
+  Es lo que convierte esto en algo de lo que no hay que acordarse.
+- **Estado compartido entre equipos** por la carpeta de aplicación de OneDrive: si empiezas la
+  jornada en el portátil y abres la aplicación en otro equipo, ves la cuenta atrás en marcha, no
+  un botón de «Iniciar» que arrancaría una segunda jornada.
+- **Histórico de jornadas** con resumen semanal.
+- **Avisos** al empezar y terminar, con uno de 48 mensajes y su emoji. Son ventanas propias y
+  no globos de bandeja, porque con **No molestar** Windows descarta los globos sin dejar rastro.
+
+<p align="center">
+  <img src="01_Diseno/mijornada-en-pausa-2026-09-06.png" width="30%" alt="En pausa">
+  <img src="01_Diseno/mijornada-dialogo-ajustes.png" width="34%" alt="Ajustes">
+</p>
+
+---
+
+## Cómo está hecho
+
+.NET 8 + WinForms, con el anillo dibujado a mano con GDI+. Dos paquetes NuGet (MSAL) y ninguna base
+de datos: el estado es un JSON en `%APPDATA%\MiJornada`.
+
+**Sin capas, sin interfaces y sin inyección de dependencias**, con un namespace plano. Es una
+excepción deliberada a los estándares del ecosistema, no un descuido: ver `_hilo/DECISIONES.md`
+(ADR-007) antes de "corregirlo". Ese ADR tiene además una revisión honesta — nació justificándose
+con «son 500 líneas» y hoy son ~3.600.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ PASO 1: arranque.ps1                                            │
-│ Descarga y extrae la plantilla técnica                          │
-│ → Crea carpetas 00-07, .claude/commands, _hilo              │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ PASO 2: /onboarding (8 fases de preguntas)                      │
-│ Claude Code pregunta sobre el proyecto                          │
-│ → Crea ESTADO_PROYECTO.json, FUNCIONALIDADES.md, etc.           │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ PASO 3: integracion-vs.ps1 (automático o manual)                │
-│ Añade Solution Folders al archivo .sln                          │
-│ → 8 carpetas visibles en Visual Studio                          │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ PASO 4: Abrir Visual Studio                                     │
-│ Ver la estructura completa del proyecto                         │
-└─────────────────────────────────────────────────────────────────┘
+03_Desarrollo/          La aplicación (13 ficheros .cs)
+02_Entorno/             Instalador y registro en Entra ID
+01_Diseno/              Icono, capturas y el script que genera el .ico
+_hilo/                  Memoria del proyecto: decisiones, lecciones, deuda
 ```
 
----
+### Dónde está lo interesante
 
-## Estructura del Proyecto
+Casi todo lo que costó descubrir está escrito, no en el código sino en `_hilo/`:
 
-```
-Proyecto/
-│
-├── CLAUDE.md                ← Memoria del proyecto (generado por /init)
-├── README.md                # Este archivo
-├── INICIO_RAPIDO.md         # Guía de inicio en 30 minutos
-│
-├── .claude/                 ← Configuración Claude Code
-│   ├── commands/            # Comandos personalizados (/analizar, /commit, etc.)
-│   │   └── integracion-vs.ps1  # Script para integrar en Visual Studio
-│   ├── rules/               # Reglas condicionales por tipo de archivo
-│   └── CLAUDE_BASE.md  # Estándares del ecosistema
-│
-├── _hilo/               ← Estado dinámico del proyecto
-│   ├── ESTADO_PROYECTO.json # Configuración y estado
-│   ├── DEPENDENCIAS.md      # Stack tecnológico
-│   ├── FUNCIONALIDADES.md   # Módulos y features
-│   ├── DEUDA_TECNICA.md     # Issues conocidos
-│   └── HISTORIAL_CAMBIOS.md # Changelog
-│
-├── Documentos_Base/         # Referencias técnicas del ecosistema
-│   ├── 01_Estructura_Tecnica/
-│   ├── 02_Diseño_Usabilidad/
-│   └── 03_Consideraciones_Comunes/
-│
-├── 00_Gestion/              # Gestión del proyecto
-│   ├── config_proyecto.json
-│   ├── CHECKLIST_INICIO.md
-│   ├── Requerimientos/
-│   └── Reuniones/
-│
-├── 01_Diseño/               # Arquitectura y modelos de datos
-│   ├── Arquitectura/
-│   └── Modelos_Datos/
-│
-├── 02_Entorno/              # Configuración del entorno
-│   ├── docker-compose.yml
-│   ├── .env.example
-│   └── Scripts/
-│
-├── 03_Desarrollo/           # Código fuente (.NET)
-│
-├── 04_Pruebas/              # Tests unitarios e integración
-│
-├── 05_CICD/                 # Pipelines e infraestructura
-│
-├── 06_Documentacion/        # Documentación del proyecto
-│
-└── 07_UAP/                  # Unidad de Atención Prioritaria (soporte)
-```
+- **`_hilo/DECISIONES.md`** — 9 ADRs, varios tomados **después** de probar la alternativa y que
+  fallara.
+- **`_hilo/LECCIONES.md`** — lo que costó horas: que `setUserPreferredPresence` no hace nada y no
+  falla si Teams está cerrado; que la ruta `/me/...` devuelve 404 con cuerpo vacío; que con No
+  molestar Windows descarta los globos de bandeja; que GDI pinta los emoji en monocromo.
+- **`_hilo/DEUDA_TECNICA.md`** — lo que se sabe que está a medias, con su porqué.
+- **`_hilo/FUNCIONALIDADES.md`** — los 18 módulos, cada uno con las decisiones que no se ven
+  leyendo el código.
 
 ---
 
-## Integración en Visual Studio
+## Requisitos
 
-Después del onboarding, el archivo `.sln` incluye **8 Solution Folders** que permiten ver toda la documentación desde Visual Studio:
-
-| Carpeta VS | Contenido |
-|------------|-----------|
-| **Contexto Claude** | CLAUDE.md, ESTADO_PROYECTO.json, DEPENDENCIAS.md, etc. |
-| **Especificaciones** | _hilo/specs/*.md |
-| **Diagramas** | 01_Diseno/Arquitectura/*.md |
-| **Gestion** | 00_Gestion/*.md |
-| **Pruebas** | 04_Pruebas/*.md |
-| **CI-CD** | 05_CICD/*, azure-pipelines.yml |
-| **Documentacion** | 06_Documentacion/*.md, README.md |
-| **UAP** | 07_UAP/*.md |
-
-Si las carpetas no aparecen, ejecutar manualmente:
-```powershell
-.\.claude\commands\integracion-vs.ps1
-```
+- Windows 10 o 11
+- Cuenta de Microsoft 365 de la organización
+- **Teams abierto en algún dispositivo**: sin una sesión de presencia activa, la llamada a Graph
+  responde correctamente y no cambia nada. Es un fallo silencioso y conviene saberlo
+- Permisos delegados `Presence.ReadWrite` y `Files.ReadWrite.AppFolder`, ninguno de los dos
+  necesita consentimiento de administrador
 
 ---
 
-## Stack Tecnológico
+## Sobre la estructura del repositorio
 
-| Capa | Tecnología | Versión |
-|------|------------|---------|
-| Backend | .NET / C# | 8+ LTS (soporta 4.x, 8, 9, 10) |
-| Acceso a datos | Dapper (recomendado) | Última estable |
-| Base de datos | SQL Server | 2017 (14.0) |
-| Intercalación | SQL_Latin1_General_CP1250_CI_AS | - |
-| Cloud | Azure | - |
-| Caché | Redis | 7+ |
-| Almacenamiento | Azure Blob Storage | - |
-| Contenedores | Docker | - |
+Las carpetas `.claude/`, `Documentos_Base/`, `_patron/` y las de fase numeradas vienen del
+ecosistema **Ovillo**, que es el andamio con el que se desarrolla esto: son ~460 de los ~530
+ficheros del repositorio. **La aplicación son 17 ficheros en `03_Desarrollo/`.** Si vienes a ver el
+código, ese es el sitio.
 
-Ver detalles completos en: `Documentos_Base/01_Estructura_Tecnica/`
+El README de la plantilla está en [`.claude/README_PLANTILLA_OVILLO.md`](.claude/README_PLANTILLA_OVILLO.md).
 
 ---
 
-## Comandos Claude Code
-
-| Comando | Descripción |
-|---------|-------------|
-| `/onboarding` | Configuración guiada en 8 fases + integración VS |
-| `/analizar` | Análisis profundo del código |
-| `/nuevo-evolutivo` | Iniciar nueva funcionalidad |
-| `/commit` | Commit con mensaje estructurado |
-| `/test` | Generar tests unitarios |
-| `/estado` | Ver dashboard del proyecto |
-| `/actualizar` | Actualizar paquete Ovillo |
-| `/sos` | Ayuda y comandos disponibles |
-
----
-
-## Documentos Base
-
-La carpeta `Documentos_Base/` contiene las **referencias técnicas oficiales de la organización**:
-
-| Documento | Contenido |
-|-----------|-----------|
-| **Estructura Técnica** | Stack, arquitectura, seguridad, infraestructura balanceada |
-| **Diseño y Usabilidad** | Colores, tipografía, componentes UI, accesibilidad |
-| **Consideraciones Comunes** | RGPD, normativa de la organización, integraciones, auditoría |
-
-Estos documentos son la **fuente de verdad** para cualquier decisión técnica o de diseño.
-
----
-
-## Herramientas IA
-
-| Herramienta | Uso |
-|-------------|-----|
-| **Claude Code** | Análisis, diseño, arquitectura, revisión, documentación |
-| **GitHub Copilot** | Autocompletado, generación de código en IDE |
-
-### Flujo de trabajo
-
-```
-1. Análisis con Claude     → Diseñar solución
-2. Implementación con Copilot → Escribir código
-3. Revisión con Claude     → Detectar mejoras
-4. Testing                 → Generar y ejecutar tests
-5. Code Review Humano      → Aprobación final
-```
-
----
-
-## Reglas de Desarrollo
-
-### Obligatorias
-
-- Todo código IA pasa por **code review humano**
-- Sin datos sensibles en prompts (usar placeholders)
-- Azure Key Vault para **todos los secretos**
-- Azure Blob Storage para **todos los archivos**
-- Redis para **caché distribuida**
-- Sin estado local (infraestructura balanceada)
-
-### Buenas prácticas
-
-Para buenas prácticas técnicas actualizadas, Claude consultará fuentes oficiales:
-- docs.microsoft.com (.NET, Azure)
-- OWASP (seguridad)
-- learn.microsoft.com (patrones)
-
----
-
-## Estrategia Git
-
-```
-main
-├── develop
-├── feature/*
-├── bugfix/*
-└── hotfix/*
-```
-
----
-
-## Actualización del Paquete
-
-Para actualizar a la última versión del paquete Ovillo:
-
-```powershell
-# Desde PowerShell
-irm <distribution.baseUrl>/install.ps1 | iex
-
-# O desde Claude Code
-/actualizar
-```
-
----
-
-## Contacto
-
-- **Dudas técnicas**: Líder Técnico del proyecto
-- **Dudas de proceso**: JP asignado
-- **Soporte**: soporte@example.com
-
----
-
-**Versión:** 2.2.0
-**Fecha:** Enero 2026
-**Responsable:** la organización
+*Herramienta personal. Ver `_hilo/ESTADO_PROYECTO.json` para el estado actual.*
