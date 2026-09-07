@@ -118,3 +118,26 @@ _hilo/.update-check.json
 # Repositorio del ecosistema Ovillo clonado dentro del proyecto.
 # Tiene su propio remoto (hvaler/ovillo): no debe commitearse aqui.
 ovillo/
+
+# ─────────────────────────────────────────────────────────────────────────────────
+# ANDAMIO DEL ECOSISTEMA OVILLO (ADR-010: no se versiona en ESTE repositorio)
+# ─────────────────────────────────────────────────────────────────────────────────
+# Vive en la copia de trabajo y lo repone el instalador de Ovillo. Este repositorio
+# versiona la aplicacion y la memoria del proyecto (_hilo/), no la herramienta.
+.claude/
+Documentos_Base/
+_patron/
+VERSION.json
+INICIO_RAPIDO.md
+SISTEMA_CONTEXTO_CLAUDE.html
+ecosystem.config.example.json
+00_Gestion/
+04_Pruebas/
+05_CICD/
+07_UAP/
+01_Diseno/README.md
+01_Diseno/Arquitectura/
+03_Desarrollo/README.md
+06_Documentacion/README.md
+02_Entorno/docker-compose.yml
+02_Entorno/.env.example

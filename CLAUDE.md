@@ -58,6 +58,12 @@ Este archivo guía a Claude Code (claude.ai/code) cuando trabaja con código en 
 > datos, así que las reglas SQL no aplican. Ver `_hilo/DECISIONES.md` antes de "corregir" nada
 > de esto.
 
+> ⚠️ **El andamio de Ovillo NO se versiona en este repositorio** (ADR-010): `.claude/`,
+> `Documentos_Base/`, `_patron/` y las carpetas de fase de plantilla están en `.gitignore` y viven
+> solo en la copia de trabajo. Que `git status` no los muestre es lo esperado; sus cambios no se
+> commitean aquí. Se versiona el proyecto: `03_Desarrollo/`, `02_Entorno/`, `01_Diseno/`,
+> `06_Documentacion/` y `_hilo/`.
+
 ---
 
 ## Glosario del Dominio

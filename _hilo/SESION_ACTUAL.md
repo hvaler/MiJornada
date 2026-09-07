@@ -79,7 +79,7 @@ Bloqueadores: ninguno
   se suelta con `clearUserPreferredPresence`. Ver TEC-004.
 - **Los avisos no pueden usar globos de bandeja**: con No molestar, Windows los descarta sin
   dejar rastro. Ver TEC-016 antes de tocar `Aviso.cs`.
-- Antes de proponer cambios de enfoque, leer `_hilo/DECISIONES.md`: hay nueve decisiones tomadas
+- Antes de proponer cambios de enfoque, leer `_hilo/DECISIONES.md`: hay diez decisiones tomadas
   con su porqué, varias tras haber probado la alternativa. **ADR-007 tiene una revisión**: la
   premisa "son 500 líneas" ya no se sostiene (hoy ~2.780).
 

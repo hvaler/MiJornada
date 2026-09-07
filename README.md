@@ -105,12 +105,15 @@ Casi todo lo que costó descubrir está escrito, no en el código sino en `_hilo
 
 ## Sobre la estructura del repositorio
 
-Las carpetas `.claude/`, `Documentos_Base/`, `_patron/` y las de fase numeradas vienen del
-ecosistema **Ovillo**, que es el andamio con el que se desarrolla esto: son ~460 de los ~530
-ficheros del repositorio. **La aplicación son 17 ficheros en `03_Desarrollo/`.** Si vienes a ver el
-código, ese es el sitio.
+Este proyecto se desarrolla con el ecosistema **Ovillo** (comandos, skills y reglas para Claude
+Code), pero **el andamio no se versiona aquí** (ADR-010): `.claude/`, `Documentos_Base/` y
+`_patron/` viven solo en la copia de trabajo y los repone el instalador de Ovillo. Llegaron a ser
+el 86 % de los ficheros del repositorio, y hacían que esto pareciera la plantilla en vez de la
+aplicación.
 
-El README de la plantilla está en [`.claude/README_PLANTILLA_OVILLO.md`](.claude/README_PLANTILLA_OVILLO.md).
+Lo que se versiona es el proyecto: la aplicación, su instalador, el diseño y la memoria de
+decisiones en `_hilo/`. Un clon recién hecho **compila y funciona como cualquier proyecto .NET**;
+lo único que pierde sin Ovillo es la asistencia de Claude Code, no la aplicación.
 
 ---
 

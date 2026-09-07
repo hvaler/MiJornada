@@ -340,5 +340,48 @@ encendidos, ambos manden el mismo `Offline`/`OffWork`: inocuo, es idempotente.
 
 ---
 
+### ADR-010: El andamio de Ovillo no se versiona en este repositorio
+
+**Estado**: Aceptada · **Fecha**: 2026-09-07 · **Categoria**: Repositorio
+
+#### Contexto
+
+El repositorio versionaba 532 ficheros de los que **17 eran la aplicacion**: 407 de `.claude/`
+(comandos, skills y reglas del ecosistema), 53 de `Documentos_Base/`, mas carpetas de fase con
+plantillas sin rellenar. La portada de GitHub decia "Plantilla de Proyecto Ovillo". El usuario lo
+resumio exacto: *"el repositorio parece mas de Ovillo que de MiJornada"*.
+
+El modelo por defecto de Ovillo es viajar commiteado, pensado para repositorios de equipo donde
+quien clona debe recibir el tooling. Aqui no aplica: proyecto personal, un desarrollador, y quien
+clone el repositorio viene a por la aplicacion.
+
+#### Decision
+
+`.claude/`, `Documentos_Base/`, `_patron/`, las carpetas de fase de plantilla (`00_Gestion`,
+`04_Pruebas`, `05_CICD`, `07_UAP`), los README genericos de fase y los ficheros del ecosistema en
+la raiz **pasan a `.gitignore`**. Se quitaron del indice con `git rm --cached`, **sin tocar el
+disco**: el ecosistema sigue funcionando en la copia de trabajo.
+
+Se versiona el proyecto: `03_Desarrollo/`, `02_Entorno/`, `01_Diseno/`, `06_Documentacion/`,
+`_hilo/`, `CLAUDE.md`, `ecosystem.config.json` y `README.md`. De 532 ficheros a 52.
+
+`CLAUDE.md` y `_hilo/` se quedan aunque sean "de Ovillo" porque su **contenido** es de este
+proyecto: son la memoria, no la herramienta.
+
+#### Consecuencias
+
+- Quien abre el repositorio ve la aplicacion, no la plantilla.
+- Un clon nuevo compila y funciona como cualquier proyecto .NET. Lo que pierde es la asistencia
+  de Claude Code hasta reinstalar Ovillo (`irm <baseUrl>/install.ps1 | iex`), y los `@imports`
+  de `CLAUDE.md` a `.claude/CLAUDE_BASE.md` apuntan a ficheros que no existen hasta entonces
+  (Claude Code lo tolera: avisa y sigue).
+- El historial conserva todo lo anterior a este cambio, incluida la plantilla completa.
+- Los cambios que el ecosistema hace en `.claude/settings.json` dejan de ensuciar `git status`.
+- Va contra el default de Ovillo, y es consciente: si algun dia esto lo desarrolla un equipo que
+  necesite el tooling versionado, se revierte quitando las lineas del `.gitignore` y anadiendo
+  los ficheros de nuevo.
+
+---
+
 *Completado por `/onboarding` el 2026-09-06 a partir de `06_Documentacion/CONTEXTO.md` seccion 10
 y `06_Documentacion/mi-jornada-traspaso.md`*
