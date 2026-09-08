@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Crea en Entra ID el registro de aplicacion que necesita MiJornada y devuelve su ClientId.
 
@@ -181,6 +181,6 @@ Write-Host "  objectId    : $($app.id)"
 Write-Host ""
 Write-Host "  ClientId    : $($app.appId)" -ForegroundColor Green
 Write-Host ""
-Write-Host "Pegalo en 03_Desarrollo/Estado.cs, en Config.ClientId (sustituye PON-AQUI-TU-CLIENT-ID)."
+Write-Host "Pegalo en Estado.cs (raiz del repositorio), en Config.ClientId."
 Write-Host "La primera vez que ejecutes MiJornada te pedira consentir Presence.ReadWrite: es normal,"
 Write-Host "es un permiso delegado y no necesita aprobacion de administrador."

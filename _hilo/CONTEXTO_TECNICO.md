@@ -59,7 +59,7 @@ Por que codigo de dispositivo y no el flujo interactivo: el interactivo falla en
 equipos no gestionados. Ver `_hilo/DECISIONES.md` (ADR-002) y `_hilo/LECCIONES.md`.
 
 **Registro en Entra ID**: se creo uno **propio**, `Mi jornada`, con
-`02_Entorno/crear-registro-entra.ps1` (el script tambien sabe actualizar uno existente, anadiendo
+`scripts/crear-registro-entra.ps1` (el script tambien sabe actualizar uno existente, anadiendo
 solo los permisos que falten). ClientId `dbcd6425-561b-4d91-a4d5-f0bb25b31241`. Requisitos:
 
 - Plataforma "Aplicaciones moviles y de escritorio" con la URI
@@ -105,7 +105,7 @@ No se usa el SDK `Microsoft.Graph`: son un punado de llamadas REST y el SDK comp
 ## Estructura del Proyecto
 
 ```
-03_Desarrollo/
+
 ├── MiJornada.csproj        # net8.0-windows, WinExe, 2 paquetes MSAL
 ├── Program.cs              # Punto de entrada. Acepta --datos, --minutos N y --minimizado
 ├── Estado.cs               # Config, Ajustes, Rutas, Iconos y Estado (maquina de estados + persistencia)

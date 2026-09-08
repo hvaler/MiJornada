@@ -1,9 +1,6 @@
-# 02_Entorno — Instalación y registro en Entra
+# scripts — Instalación y registro en Entra
 
 Scripts que hacen todo lo que antes se hacía a mano.
-
-> **Nota**: `docker-compose.yml` es residuo de la plantilla del ecosistema. Este proyecto **no
-> tiene base de datos ni servicios**: el estado vive en un JSON en `%APPDATA%`. Se puede borrar.
 
 ---
 
@@ -43,7 +40,7 @@ va de sobra.
 ### Dárselo a otra persona
 
 ```powershell
-dotnet publish ..\03_Desarrollo\MiJornada.csproj -c Release -r win-x64 `
+dotnet publish ..\MiJornada.csproj -c Release -r win-x64 `
   --self-contained true -p:PublishSingleFile=true -o MiJornada-0.11.0
 ```
 

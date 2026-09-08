@@ -139,7 +139,7 @@ solo con el anillo y el botón; la configuración crece aquí sin ensuciarla.
 
 ### M8 — Icono propio
 
-**Ficheros**: `mijornada.ico`, `Iconos` en `Estado.cs`, `01_Diseno/generar-icono.ps1`
+**Ficheros**: `mijornada.ico`, `Iconos` en `Estado.cs`, `scripts/generar-icono.ps1`
 
 El anillo de la aplicación como icono, en 7 resoluciones (16 a 256 px) dentro de un único `.ico`
 con marcos PNG. Se pide el marco concreto en cada uso (16 px bandeja, 32 ventana): con uno solo,
@@ -149,7 +149,7 @@ Se dibuja como arco de 270° y no como círculo cerrado porque a 16 px un círcu
 como una rosquilla indistinguible; el hueco es lo que hace reconocible que es un progreso. La
 pista gris solo aparece de 32 px para arriba: por debajo es ruido.
 
-Para regenerarlo: `01_Diseno/generar-icono.ps1`. El `.ico` se commitea.
+Para regenerarlo: `scripts/generar-icono.ps1`. El `.ico` se commitea.
 
 ### M9 — Icono de bandeja dinamico
 
@@ -321,7 +321,7 @@ publicacion que la pausa, ya verificada, pero no se ha ejercitado.
 
 ### M18 — Instalador
 
-**Ficheros**: `02_Entorno/instalar.ps1`, `02_Entorno/desinstalar.ps1` · **Estado**: verificado
+**Ficheros**: `scripts/instalar.ps1`, `scripts/desinstalar.ps1` · **Estado**: verificado
 2026-09-06 (instalado, desinstalado y reinstalado en HUGOVALER)
 
 Un script de PowerShell, no un MSI. WiX o Inno Setup traerian una herramienta externa, un formato
@@ -565,7 +565,7 @@ Se llega desde dos sitios: el menu de la bandeja y un enlace discreto en Ajustes
 
 ## Planificadas
 
-De `06_Documentacion/CONTEXTO.md` seccion 9. Ordenadas por lo que aportan frente a lo que cuestan.
+De `docs/CONTEXTO.md` seccion 9. Ordenadas por lo que aportan frente a lo que cuestan.
 Lo tachado ya esta hecho.
 
 **Cerca del codigo, utiles ya**

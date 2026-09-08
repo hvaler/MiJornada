@@ -1,6 +1,6 @@
-<#
+﻿<#
 .SYNOPSIS
-    Genera 03_Desarrollo/mijornada.ico a partir del anillo de la aplicacion.
+    Genera mijornada.ico (en la raiz del repositorio) a partir del anillo de la aplicacion.
 
 .DESCRIPTION
     Dibuja el anillo con GDI+ a varias resoluciones y las empaqueta en un unico .ico
@@ -20,7 +20,7 @@
 
 [CmdletBinding()]
 param(
-    [string] $Salida = "$PSScriptRoot\..\03_Desarrollo\mijornada.ico"
+    [string] $Salida = "$PSScriptRoot\..\mijornada.ico"
 )
 
 $ErrorActionPreference = 'Stop'

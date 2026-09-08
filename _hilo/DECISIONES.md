@@ -20,6 +20,7 @@
 | ADR-008 | WinForms y no WPF | 2026-09-06 | Aceptada | Frontend |
 | ADR-009 | Estado compartido entre equipos via la carpeta de aplicacion de OneDrive | 2026-09-06 | Aceptada | Arquitectura |
 | ADR-010 | El andamio de Ovillo no se versiona (y desde el 08, tampoco esta en la copia de trabajo) | 2026-09-07 | Aceptada | Repositorio |
+| ADR-011 | Estructura convencional: la aplicacion en la raiz, scripts/ y docs/ | 2026-09-08 | Aceptada | Repositorio |
 
 ---
 
@@ -64,7 +65,7 @@ flujos, sin licencia.
   recurrencia se ejecuta con las conexiones de quien lo creo, asi que cambiaria *su* presencia;
   `Presence.ReadWrite` delegado solo permite tocar la de uno mismo.
 
-> Historia completa en `06_Documentacion/mi-jornada-traspaso.md`.
+> Historia completa en `docs/mi-jornada-traspaso.md`.
 
 ---
 
@@ -365,6 +366,7 @@ disco**: el ecosistema sigue funcionando en la copia de trabajo.
 
 Se versiona el proyecto: `03_Desarrollo/`, `02_Entorno/`, `01_Diseno/`, `06_Documentacion/`,
 `_hilo/`, `CLAUDE.md`, `ecosystem.config.json` y `README.md`. De 532 ficheros a 52.
+*(Nombres de carpeta de aquella fecha; ADR-011 los reorganiza a la estructura convencional.)*
 
 `CLAUDE.md` y `_hilo/` se quedan aunque sean "de Ovillo" porque su **contenido** es de este
 proyecto: son la memoria, no la herramienta.
@@ -400,5 +402,42 @@ re-clona; `AGENTS.md`/`.codex/` los regenera la plantilla. No existian `settings
 
 ---
 
-*Completado por `/onboarding` el 2026-09-06 a partir de `06_Documentacion/CONTEXTO.md` seccion 10
-y `06_Documentacion/mi-jornada-traspaso.md`*
+### ADR-011: Estructura convencional â€” la aplicacion en la raiz, scripts/ y docs/
+
+**Estado**: Aceptada · **Fecha**: 2026-09-08 · **Categoria**: Repositorio
+
+#### Contexto
+
+Tras retirar el andamio de Ovillo (ADR-010 y su ampliacion), el repositorio seguia usando la
+convencion de carpetas de fase de la plantilla (`01_Diseno`, `02_Entorno`, `03_Desarrollo`,
+`06_Documentacion`), que sin el ecosistema alrededor no significa nada: un proyecto creado sin
+Ovillo no tendria numeros de fase, tendria la aplicacion a la vista.
+
+#### Decision
+
+Estructura de proyecto .NET convencional, movida con `git mv` para conservar el historial:
+
+| Antes | Ahora |
+|---|---|
+| `03_Desarrollo/*.cs`, `.csproj`, `.ico` | **raiz del repositorio** |
+| `02_Entorno/*.ps1` y su README | `scripts/` |
+| `01_Diseno/generar-icono.ps1` | `scripts/` |
+| `01_Diseno/*.png` | `docs/capturas/` |
+| `06_Documentacion/*`, `LEEME.md` | `docs/` |
+| `_hilo/` | igual: es memoria, no andamio |
+
+Sin `src/`: para un proyecto de un solo `.csproj`, la aplicacion en la raiz es lo normal y lo
+que pidio el usuario ("la aplicacion deberia estar en la raiz").
+
+#### Consecuencias
+
+- `git clone` + `dotnet build` en la raiz, sin buscar nada.
+- Los ADR anteriores citan rutas de su epoca; son actas y no se reescriben (los punteros vivos
+  de los documentos operativos si se actualizaron).
+- `scripts/instalar.ps1` y `scripts/generar-icono.ps1` cambiaron sus rutas relativas; el resto
+  del codigo no referencia rutas del repositorio y no se toco.
+
+---
+
+*Completado por `/onboarding` el 2026-09-06 a partir de `docs/CONTEXTO.md` seccion 10
+y `docs/mi-jornada-traspaso.md`*

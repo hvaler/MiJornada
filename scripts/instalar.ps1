@@ -18,7 +18,7 @@
 
 .PARAMETER Origen
     Carpeta con un MiJornada.exe ya publicado. Si se omite, el script busca el codigo en
-    ..\03_Desarrollo y publica el mismo.
+    la raiz del repositorio y publica el mismo.
 
 .PARAMETER Ligero
     Publica dependiendo del runtime (1,4 MB) en vez de autocontenido (155 MB). Exige tener
@@ -79,9 +79,9 @@ if ($Origen) {
     Bien "Usando lo ya publicado en $Origen"
 }
 else {
-    $proyecto = Join-Path (Split-Path $PSScriptRoot -Parent) '03_Desarrollo\MiJornada.csproj'
+    $proyecto = Join-Path (Split-Path $PSScriptRoot -Parent) 'MiJornada.csproj'
     if (-not (Test-Path -LiteralPath $proyecto)) {
-        throw "No encuentro el codigo en 03_Desarrollo. Usa -Origen con una carpeta ya publicada."
+        throw "No encuentro MiJornada.csproj en la raiz del repositorio. Usa -Origen con una carpeta ya publicada."
     }
 
     if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {

@@ -83,9 +83,9 @@ Al terminar se restauro la presencia del usuario con `clearUserPreferredPresence
 
 ### DT-003 — `ClientId` sin rellenar — RESUELTA 2026-09-06
 
-**Fichero**: `03_Desarrollo/Estado.cs`
+**Fichero**: `Estado.cs`
 
-Se creo un registro **propio** en Entra ID con `02_Entorno/crear-registro-entra.ps1`:
+Se creo un registro **propio** en Entra ID con `scripts/crear-registro-entra.ps1`:
 
 | | |
 |---|---|
@@ -117,7 +117,7 @@ codigo escrito del tiron y nunca verificado.
 
 ### DT-002 — Versiones de MSAL sin verificar — RESUELTA 2026-09-06 (falsa alarma)
 
-**Fichero**: `03_Desarrollo/MiJornada.csproj`
+**Fichero**: `MiJornada.csproj`
 
 Era el sospechoso numero uno y no lo era. `dotnet list package` confirma que
 `Microsoft.Identity.Client` y `Microsoft.Identity.Client.Extensions.Msal` **4.66.2** existen y
@@ -132,7 +132,7 @@ reporta ninguna vulnerabilidad conocida en esas versiones.
 
 ### DT-004 — Transparencia de las etiquetas sobre el anillo — **NO SE MANIFIESTA** (2026-09-06)
 
-**Fichero**: `03_Desarrollo/MainForm.cs`
+**Fichero**: `MainForm.cs`
 
 WinForms no tiene transparencia real: un `Label` con `BackColor = Transparent` pinta el fondo de
 su **padre**. La cuenta atras esta como hija del panel del anillo (`_lblTiempo.Parent = _anillo`)
@@ -150,7 +150,7 @@ el anillo sin asignarle `Parent = _anillo`. Si eso pasa, la salida es dibujar el
 
 ### DT-005 — `async void` en los manejadores
 
-**Fichero**: `03_Desarrollo/MainForm.cs`
+**Fichero**: `MainForm.cs`
 
 Las excepciones se capturan dentro de `CambiarPresenciaAsync`, pero **un fallo en
 `Estado.Guardar()` se iria sin controlar y tumbaria el proceso**. Y si el proceso muere, nadie
@@ -163,7 +163,7 @@ pone el "Fuera del trabajo" al final, que es justo lo que la aplicacion existe p
 
 ### DT-008 — Sin reintento en el POST a Graph
 
-**Fichero**: `03_Desarrollo/GraphService.cs`
+**Fichero**: `GraphService.cs`
 
 Un fallo de red al final de la jornada deja la presencia sin cambiar **y el aviso ya se mostro**:
 el usuario cree que ha fichado la salida cuando no.
@@ -175,7 +175,7 @@ Polly por esto es desproporcionado; un bucle basta.
 
 ### DT-009 — Sin instancia unica
 
-**Fichero**: `03_Desarrollo/Program.cs`
+**Fichero**: `Program.cs`
 
 Dos ventanas abiertas escriben el mismo `estado.json` y la ultima gana.
 
@@ -187,7 +187,7 @@ Dos ventanas abiertas escriben el mismo `estado.json` y la ultima gana.
 
 ### DT-006 — `Clipboard.SetText` con cadena vacia
 
-**Fichero**: `03_Desarrollo/MainForm.cs`
+**Fichero**: `MainForm.cs`
 
 Lanza excepcion. El codigo de dispositivo no deberia venir vacio, pero conviene el `if`.
 
@@ -195,7 +195,7 @@ Lanza excepcion. El codigo de dispositivo no deberia venir vacio, pero conviene 
 
 ### DT-007 — Parpadeo del anillo — RESUELTA 2026-09-06
 
-**Fichero**: `03_Desarrollo/MainForm.cs`
+**Fichero**: `MainForm.cs`
 
 `Refrescar()` invalidaba el panel cada segundo y el `Panel` no tenia doble bufer: borraba el fondo
 y **luego** pintaba, y ese hueco se veia.
@@ -257,4 +257,4 @@ Documentadas para que nadie las "arregle" por error:
 
 ---
 
-*Creado por `/onboarding` el 2026-09-06 a partir de `06_Documentacion/CONTEXTO.md` seccion 8*
+*Creado por `/onboarding` el 2026-09-06 a partir de `docs/CONTEXTO.md` seccion 8*

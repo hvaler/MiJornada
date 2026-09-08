@@ -24,9 +24,9 @@ Este archivo guía a Claude Code cuando trabaja en este repositorio.
 |-------|-------|
 | **Nombre** | Mi jornada |
 | **Qué es** | App de escritorio que controla la presencia de Teams vía Microsoft Graph: Disponible al fichar, Fuera del trabajo al terminar |
-| **Versión** | 0.11.0 — **instalada** en HUGOVALER vía `02_Entorno/instalar.ps1` |
+| **Versión** | 0.11.0 — **instalada** en HUGOVALER vía `scripts/instalar.ps1` |
 | **Framework** | .NET 8 (`net8.0-windows`), WinForms, C# 12 |
-| **Código** | `03_Desarrollo/` — 13 ficheros `.cs` (~3.600 líneas), namespace plano `MiJornada`, sin `.sln` |
+| **Código** | **la raíz del repositorio** — 13 ficheros `.cs` (~3.600 líneas), namespace plano `MiJornada`, sin `.sln` (ADR-011) |
 | **Registro Entra** | `Mi jornada` — ClientId `dbcd6425-561b-4d91-a4d5-f0bb25b31241`, uno para todo el tenant |
 | **Estado** | Backlog original cerrado (M1–M18). Sin verificar SOLO: cierre de jornada desde un segundo equipo real |
 
@@ -56,11 +56,10 @@ Este archivo guía a Claude Code cuando trabaja en este repositorio.
 ## Comandos
 
 ```powershell
-cd 03_Desarrollo
-dotnet build                                   # compilar (0 avisos: es el estándar del proyecto)
+dotnet build                                   # desde la raiz; 0 avisos es el estandar del proyecto
 .\bin\Debug\net8.0-windows\MiJornada.exe --datos <carpeta> --minutos 2   # probar sin tocar datos reales
 
-cd ..\02_Entorno
+cd scripts
 .\instalar.ps1                                 # publicar + instalar para el usuario actual
 .\desinstalar.ps1                              # conserva los datos salvo -ConDatos
 ```
@@ -87,7 +86,7 @@ cd ..\02_Entorno
 |---|---|---|
 | `_hilo/ESTADO_PROYECTO.json` | Estado y configuración | siempre (importado) |
 | `_hilo/SESION_ACTUAL.md` | Traspaso entre sesiones | siempre (importado) |
-| `_hilo/DECISIONES.md` | ADR-001…010, con su porqué | **antes de proponer cambios de enfoque** |
+| `_hilo/DECISIONES.md` | ADR-001…011, con su porqué | **antes de proponer cambios de enfoque** |
 | `_hilo/LECCIONES.md` | PAT/ERR/TEC/PREF: lo que costó horas | **al empezar a tocar código** |
 | `_hilo/FUNCIONALIDADES.md` | Módulos M1–M18 con sus decisiones | antes de modificar una funcionalidad |
 | `_hilo/DEUDA_TECNICA.md` | DT-001…011 y su estado | antes de "arreglar" algo conocido |

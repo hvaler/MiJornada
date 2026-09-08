@@ -135,9 +135,4 @@ ecosystem.config.example.json
 04_Pruebas/
 05_CICD/
 07_UAP/
-01_Diseno/README.md
-01_Diseno/Arquitectura/
-03_Desarrollo/README.md
-06_Documentacion/README.md
-02_Entorno/docker-compose.yml
-02_Entorno/.env.example
+.sonar/

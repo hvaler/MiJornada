@@ -35,7 +35,7 @@ cifra sin mover la hora de fin). Al reanudar, la hora de fin se desplaza por los
 **Por que**: un contador que se decrementa se desincroniza si el equipo se suspende o el proceso
 se congela. La resta contra el reloj real siempre da el valor correcto al volver.
 
-**Ejemplo**: `03_Desarrollo/Estado.cs`, propiedad `Restante`. Ver ADR-005.
+**Ejemplo**: `Estado.cs`, propiedad `Restante`. Ver ADR-005.
 
 **Fecha**: 2026-09-06
 
@@ -51,7 +51,7 @@ arrancar la hora de fin ya paso, se descarta en silencio.
 **Por que**: la aplicacion se puede cerrar y reabrir sin perder la jornada. Y no tiene sentido
 notificar el final de una jornada que termino ayer.
 
-**Ejemplo**: `03_Desarrollo/Estado.cs`, metodos `Guardar()` y `Limpiar()`.
+**Ejemplo**: `Estado.cs`, metodos `Guardar()` y `Limpiar()`.
 
 **Fecha**: 2026-09-06
 
@@ -67,7 +67,7 @@ mismo**: lo que queda.
 
 **Por que**: coherencia visual. Si el anillo creciera y la cifra bajase, contarian cosas distintas.
 
-**Ejemplo**: `03_Desarrollo/MainForm.cs`, `DibujarAnillo`; `Estado.Fraccion`.
+**Ejemplo**: `MainForm.cs`, `DibujarAnillo`; `Estado.Fraccion`.
 
 **Fecha**: 2026-09-06
 
@@ -648,7 +648,7 @@ paquete.
 ## 5. Contexto historico
 
 El proyecto es la **tercera implementacion** de la misma idea. Antes de proponer un cambio de
-enfoque, leer `06_Documentacion/mi-jornada-traspaso.md`: documenta bastantes callejones sin
+enfoque, leer `docs/mi-jornada-traspaso.md`: documenta bastantes callejones sin
 salida ya recorridos, incluida una solucion de Power Platform que llego a funcionar entera y se
 descarto por coste de licencia, no por problemas tecnicos.
 

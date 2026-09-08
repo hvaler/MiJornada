@@ -6,7 +6,7 @@ la jornada y en **Fuera del trabajo** al terminarla, con una cuenta atrás de 7 
 El problema que resuelve: **no aparecer disponible fuera del horario de trabajo** sin tener que
 acordarse de cambiar el estado a mano.
 
-![La ventana principal](01_Diseno/mijornada-jornada-activa-2026-09-06.png)
+![La ventana principal](docs/capturas/mijornada-jornada-activa-2026-09-06.png)
 
 Habla directamente con Microsoft Graph. Sin Power Platform, sin flujos y sin licencias premium
 — fue la tercera implementación de la misma idea, y la primera que no cuesta dinero al mes.
@@ -17,13 +17,13 @@ Habla directamente con Microsoft Graph. Sin Power Platform, sin flujos y sin lic
 
 ```powershell
 git clone https://github.com/hvaler/MiJornada
-cd MiJornada\02_Entorno
+cd MiJornada\scripts
 .\instalar.ps1
 ```
 
 **No hace falta ser administrador.** Instala solo para el usuario actual en
 `%LOCALAPPDATA%\Programs\MiJornada`. Por defecto publica un `.exe` autocontenido, así que funciona
-en un equipo sin .NET instalado. Detalles y opciones: [`02_Entorno/README.md`](02_Entorno/README.md).
+en un equipo sin .NET instalado. Detalles y opciones: [`scripts/README.md`](scripts/README.md).
 
 La primera vez pide un **código de dispositivo**: se copia, se pega en el navegador y no lo vuelve
 a pedir. No es un capricho — el flujo interactivo normal no funciona en equipos no gestionados por
@@ -54,8 +54,8 @@ Y alrededor de eso:
   no globos de bandeja, porque con **No molestar** Windows descarta los globos sin dejar rastro.
 
 <p align="center">
-  <img src="01_Diseno/mijornada-en-pausa-2026-09-06.png" width="30%" alt="En pausa">
-  <img src="01_Diseno/mijornada-dialogo-ajustes.png" width="34%" alt="Ajustes">
+  <img src="docs/capturas/mijornada-en-pausa-2026-09-06.png" width="30%" alt="En pausa">
+  <img src="docs/capturas/mijornada-dialogo-ajustes.png" width="34%" alt="Ajustes">
 </p>
 
 ---
@@ -71,9 +71,9 @@ excepción deliberada a los estándares del ecosistema, no un descuido: ver `_hi
 con «son 500 líneas» y hoy son ~3.600.
 
 ```
-03_Desarrollo/          La aplicación (13 ficheros .cs)
-02_Entorno/             Instalador y registro en Entra ID
-01_Diseno/              Icono, capturas y el script que genera el .ico
+/                       La aplicación, en la raíz: 13 ficheros .cs, el .csproj y el icono
+scripts/                Instalador, desinstalador, registro en Entra y generador del icono
+docs/                   Capturas, documentos de traspaso y LEEME original
 _hilo/                  Memoria del proyecto: decisiones, lecciones, deuda
 ```
 
@@ -81,7 +81,7 @@ _hilo/                  Memoria del proyecto: decisiones, lecciones, deuda
 
 Casi todo lo que costó descubrir está escrito, no en el código sino en `_hilo/`:
 
-- **`_hilo/DECISIONES.md`** — 9 ADRs, varios tomados **después** de probar la alternativa y que
+- **`_hilo/DECISIONES.md`** — 11 ADRs, varios tomados **después** de probar la alternativa y que
   fallara.
 - **`_hilo/LECCIONES.md`** — lo que costó horas: que `setUserPreferredPresence` no hace nada y no
   falla si Teams está cerrado; que la ruta `/me/...` devuelve 404 con cuerpo vacío; que con No
@@ -105,15 +105,14 @@ Casi todo lo que costó descubrir está escrito, no en el código sino en `_hilo
 
 ## Sobre la estructura del repositorio
 
-Este proyecto se desarrolla con el ecosistema **Ovillo** (comandos, skills y reglas para Claude
-Code), pero **el andamio no se versiona aquí** (ADR-010): `.claude/`, `Documentos_Base/` y
-`_patron/` viven solo en la copia de trabajo y los repone el instalador de Ovillo. Llegaron a ser
-el 86 % de los ficheros del repositorio, y hacían que esto pareciera la plantilla en vez de la
-aplicación.
+Estructura de proyecto .NET convencional: **la aplicación en la raíz**, `scripts/` para instalar y
+`docs/` para el resto (ADR-011). Nació sobre la plantilla del ecosistema **Ovillo** — carpetas de
+fase numeradas y ~460 ficheros de andamio que llegaron a ser el 86 % del repositorio — y se
+desmontó en dos pasos: primero dejó de versionarse (ADR-010) y después se retiró también de la
+copia de trabajo, porque Ovillo pasará a usarse **como plugin de Claude Code**.
 
-Lo que se versiona es el proyecto: la aplicación, su instalador, el diseño y la memoria de
-decisiones en `_hilo/`. Un clon recién hecho **compila y funciona como cualquier proyecto .NET**;
-lo único que pierde sin Ovillo es la asistencia de Claude Code, no la aplicación.
+La memoria del proyecto (`_hilo/`: decisiones, lecciones, deuda) sí se versiona: es contenido,
+no herramienta. Un clon recién hecho compila y funciona como cualquier proyecto .NET.
 
 ---
 
