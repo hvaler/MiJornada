@@ -19,6 +19,7 @@
 | ADR-007 | Sin capas, sin DI, namespace plano | 2026-09-06 | Aceptada | Arquitectura |
 | ADR-008 | WinForms y no WPF | 2026-09-06 | Aceptada | Frontend |
 | ADR-009 | Estado compartido entre equipos via la carpeta de aplicacion de OneDrive | 2026-09-06 | Aceptada | Arquitectura |
+| ADR-010 | El andamio de Ovillo no se versiona (y desde el 08, tampoco esta en la copia de trabajo) | 2026-09-07 | Aceptada | Repositorio |
 
 ---
 
@@ -380,6 +381,22 @@ proyecto: son la memoria, no la herramienta.
 - Va contra el default de Ovillo, y es consciente: si algun dia esto lo desarrolla un equipo que
   necesite el tooling versionado, se revierte quitando las lineas del `.gitignore` y anadiendo
   los ficheros de nuevo.
+
+#### Ampliacion 2026-09-08 — tampoco en la copia de trabajo (prueba de Ovillo como plugin)
+
+El usuario decidio ir un paso mas alla para **probar Ovillo como plugin de Claude Code**: el
+andamio se retiro tambien del disco (`.claude/`, `Documentos_Base/`, `_patron/`, carpetas de
+fase, `AGENTS.md`+`.codex/`+`.agents/` de Codex, y el clon `ovillo/`). El proyecto queda como
+quedaria en un equipo con Ovillo instalado como plugin: solo el proyecto.
+
+**A esa fecha el plugin NO existe**: el repo de Ovillo no tiene `.claude-plugin/` ni hay
+marketplace; sigue siendo el modelo de plantilla copiada. Hasta que exista, este repositorio
+funciona sin comandos, hooks ni reglas del ecosistema.
+
+Recuperacion, verificada antes de borrar: el andamio esta entero en el historial (commit
+anterior a `fd5fb7e`); el clon `ovillo/` estaba limpio y sincronizado con su remoto, se
+re-clona; `AGENTS.md`/`.codex/` los regenera la plantilla. No existian `settings.local.json` ni
+`user-config.json`, asi que no se perdio nada local.
 
 ---
 

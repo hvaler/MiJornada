@@ -122,7 +122,7 @@ ovillo/
 # ─────────────────────────────────────────────────────────────────────────────────
 # ANDAMIO DEL ECOSISTEMA OVILLO (ADR-010: no se versiona en ESTE repositorio)
 # ─────────────────────────────────────────────────────────────────────────────────
-# Vive en la copia de trabajo y lo repone el instalador de Ovillo. Este repositorio
+# Retirado tambien de la copia de trabajo el 2026-09-08 para probar Ovillo como plugin. Este repositorio
 # versiona la aplicacion y la memoria del proyecto (_hilo/), no la herramienta.
 .claude/
 Documentos_Base/
