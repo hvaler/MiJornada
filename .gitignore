@@ -64,7 +64,7 @@ _hilo/agent-telemetry.jsonl
 *.log
 *.tmp
 *.temp
-*.bak
+*.bak*
 *.swp
 *~
 
@@ -122,8 +122,8 @@ ovillo/
 # ─────────────────────────────────────────────────────────────────────────────────
 # ANDAMIO DEL ECOSISTEMA OVILLO (ADR-010: no se versiona en ESTE repositorio)
 # ─────────────────────────────────────────────────────────────────────────────────
-# Retirado tambien de la copia de trabajo el 2026-09-08 para probar Ovillo como plugin. Este repositorio
-# versiona la aplicacion y la memoria del proyecto (_hilo/), no la herramienta.
+# Ovillo se usa como PLUGIN (hv@ovillo). Lo que /hv:init deja en la copia de trabajo vive aqui sin
+# versionar: este repositorio versiona la aplicacion y la memoria del proyecto (_hilo/), no la herramienta.
 .claude/
 Documentos_Base/
 _patron/
@@ -136,3 +136,7 @@ ecosystem.config.example.json
 05_CICD/
 07_UAP/
 .sonar/
+
+# Ovillo - identidad y estado local (no commitear)
+_hilo/.skill-guard.json
+.claude/sql-legacy-baseline.txt

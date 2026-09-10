@@ -2,7 +2,7 @@
   "_schema": "Documentacion de campos, ejemplos y opciones extendidas: _hilo/ESTADO_PROYECTO.schema.md (NO se carga en contexto; consultar bajo demanda)",
   "ecosistema": {
     "nombre": "Ovillo",
-    "version": "1.1.0",
+    "version": "1.1.4",
     "componentes": {
       "Ovillo": {
         "descripcion": "Ecosistema completo (plantilla + comandos + skills + reglas)",
@@ -16,7 +16,8 @@
         "descripcion": "Base de conocimiento (Documentos_Base, rules, patterns)",
         "carpeta": "_patron/"
       }
-    }
+    },
+    "repositorio": "hvaler/ovillo"
   },
   "proyecto": {
     "nombre": "Mi jornada",
@@ -51,22 +52,24 @@
       "medio",
       "alto"
     ],
-    "convencionRamas": "feature/{codigo}-{descripcion}",
     "prefijoCommit": "[{codigo}]",
-    "ramaBase": "main",
     "branching": {
       "_doc": "Configurado en /onboarding. Lo usan /commit, /git-sync, /liberar, /cicd-init (R21/R24). Ver schema.md#branching",
       "estrategia": "github-flow-simplificado",
       "_estrategias_disponibles": [
         "github-flow",
         "github-flow-simplificado",
-        "release-flow",
         "trunk-based",
+        "release-flow",
         "oneflow",
         "gitflow",
+        "gitlab-flow",
         "developer-flow",
         "developer-branch",
-        "gitlab-flow"
+        "ship-show-ask",
+        "stacked-prs",
+        "forking",
+        "environment-branching"
       ],
       "ramaBase": "main",
       "ramaDevelop": null,
@@ -128,7 +131,7 @@
     ],
     "sprint_actual": null,
     "version_actual": "0.11.0",
-    "ultima_actualizacion": "2026-09-07",
+    "ultima_actualizacion": "2026-09-09",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
   "acceso_bd": {
@@ -260,14 +263,18 @@
   },
   "ultimaSesion": {
     "_doc": "Se actualiza con /pausar y se lee con /continuar",
-    "fecha": "2026-09-07",
+    "fecha": "2026-09-09",
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
     "proximoPaso": "El backlog original esta CERRADO (M1-M18). Queda: verificar el cierre de jornada desde un segundo equipo real, decidir sobre DT-008/009/010/011 (reintento, instancia unica, registro, tests), y opcionalmente firmar el .exe (opciones en la conversacion del 2026-09-06: certificado propio de la organizacion, Azure Artifact Signing ~10$/mes, autofirmado+GPO). ADR-007 tiene una revision pendiente de decision del usuario (MainForm pasa de 700 lineas; corte natural: los automatismos).",
     "resumenSesion": "Version 0.11.0 y backlog original cerrado. Avisos rediseñados (tarjeta con banda de color, emoji a 30pt, animacion, barra de tiempo, duracion y autocierre configurables), 48 mensajes con fondo editables via mensajes.json, historico de jornadas con resumen semanal (M17), instalador/desinstalador sin administrador (M18), DT-007 medido y resuelto (doble bufer), fichaje al desbloquear verificado con Win+L real, cancelar limpia la presencia preferida, y dos fallos reales encontrados y corregidos: ERR-006 (cache MSAL sin registrar, tapado por la sincronizacion) y TEC-017 (ps1 sin BOM => mojibake en PS 5.1). Ademas: README de portada reescrito (decia 'Plantilla de Proyecto Ovillo') y ADR-010: el andamio de Ovillo deja de versionarse, de 532 ficheros a 52; clon limpio desde GitHub compila y arranca, verificado.",
     "archivosModificados": [
-      "_hilo/METRICAS.json"
+      ".gitignore",
+      "CLAUDE.md",
+      "_hilo/ESTADO_PROYECTO.json",
+      "_hilo/METRICAS.json",
+      "AGENTS.md"
     ],
     "notas": "La aplicacion esta INSTALADA en HUGOVALER via instalar.ps1 (LOCALAPPDATA\\Programs\\MiJornada, entrada en Aplicaciones instaladas). El .exe de bin/Debug ya no es el que se usa: para probar cambios, recompilar y reinstalar o lanzar el de Debug con --datos."
   },
@@ -284,7 +291,7 @@
       "Estado compartido entre equipos activo (ADR-009). Al abrir la app en un equipo nuevo pedira consentimiento una vez: el conjunto de scopes cambio (se anadio Files.ReadWrite.AppFolder).",
       "Lo UNICO sin verificar: el cierre de jornada por vencimiento desde otro equipo (exige una segunda maquina real; el sufijo '· EQUIPO' tampoco). Win+L y DT-007 quedaron verificados el 2026-09-06.",
       "Los avisos NO usan globos de bandeja: con No molestar activado Windows los descarta sin dejar rastro (ni llegan al centro de notificaciones). Se usa una ventana propia, Aviso.cs (TEC-016).",
-      "El andamio de Ovillo NO esta en este repositorio (ADR-010, ampliado 2026-09-08): ni versionado ni en la copia de trabajo. Se retiro para probar Ovillo como plugin, que a esa fecha AUN NO EXISTE (el repo de Ovillo no tiene .claude-plugin). Sin plugin no hay comandos /onboarding, /commit..., ni hooks ni reglas: es lo esperado, no un fallo. Recuperacion: historial (commit anterior a fd5fb7e) o re-clonar hvaler/ovillo."
+      "El andamio de Ovillo NO se versiona en este repositorio (ADR-010, ampliado 2026-09-08) porque Ovillo se usa como PLUGIN: hv@ovillo esta instalado (ambito de usuario) y de ahi salen los comandos /hv:*, los agents, los hooks y las reglas por ruta. Lo que el plugin no puede traer lo dejo /hv:init el 2026-09-09 en la copia de trabajo, sin versionar y gitignored: .claude/ (rules/, settings.json, CLAUDE_BASE*.md, CONFIGURACION.md, schemas/, scripts/, smoke-tests/, statusline.js), _patron/, INICIO_RAPIDO.md, VERSION.json y ecosystem.config.example.json. Lo deliberado fue BORRAR despues los 16 ficheros versionables que init crea (src/README.md, docs/**, ops/**, docker-compose.yml): plantillas de proyecto de equipo que no encajan en una app de escritorio personal sin BD ni CI, y con el codigo en la raiz (ADR-011) src/ se quedaria vacio. Re-ejecutar /hv:init es seguro pero los volvera a crear: borrarlos otra vez. Actualizar: claude plugin update hv@ovillo y reiniciar la sesion. Recuperacion del andamio versionado: historial (commit anterior a fd5fb7e)."
     ]
   },
   "historial_modos": [

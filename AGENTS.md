@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-Este archivo guía a Claude Code cuando trabaja en este repositorio.
+Este archivo guía a Codex cuando trabaja en este repositorio.
 
 ## @imports (contexto automático)
 
@@ -108,7 +108,7 @@ cd scripts
 
 ---
 
-## Notas para Claude
+## Notas para Codex
 
 1. **Medir antes de dar por bueno**: en este proyecto se verifica con capturas, muestreo de
    píxeles, UIAutomation o cargando el ensamblado en PowerShell 7 (TEC-011/014/015). "Compila"
