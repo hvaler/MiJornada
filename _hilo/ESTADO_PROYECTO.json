@@ -2,7 +2,7 @@
   "_schema": "Documentacion de campos, ejemplos y opciones extendidas: _hilo/ESTADO_PROYECTO.schema.md (NO se carga en contexto; consultar bajo demanda)",
   "ecosistema": {
     "nombre": "Ovillo",
-    "version": "1.1.4",
+    "version": "1.2.3",
     "componentes": {
       "Ovillo": {
         "descripcion": "Ecosistema completo (plantilla + comandos + skills + reglas)",
@@ -131,7 +131,7 @@
     ],
     "sprint_actual": null,
     "version_actual": "0.11.0",
-    "ultima_actualizacion": "2026-09-09",
+    "ultima_actualizacion": "2026-09-12",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
   "acceso_bd": {
@@ -263,18 +263,15 @@
   },
   "ultimaSesion": {
     "_doc": "Se actualiza con /pausar y se lee con /continuar",
-    "fecha": "2026-09-09",
+    "fecha": "2026-09-12",
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
     "proximoPaso": "El backlog original esta CERRADO (M1-M18). Queda: verificar el cierre de jornada desde un segundo equipo real, decidir sobre DT-008/009/010/011 (reintento, instancia unica, registro, tests), y opcionalmente firmar el .exe (opciones en la conversacion del 2026-09-06: certificado propio de la organizacion, Azure Artifact Signing ~10$/mes, autofirmado+GPO). ADR-007 tiene una revision pendiente de decision del usuario (MainForm pasa de 700 lineas; corte natural: los automatismos).",
     "resumenSesion": "Version 0.11.0 y backlog original cerrado. Avisos rediseñados (tarjeta con banda de color, emoji a 30pt, animacion, barra de tiempo, duracion y autocierre configurables), 48 mensajes con fondo editables via mensajes.json, historico de jornadas con resumen semanal (M17), instalador/desinstalador sin administrador (M18), DT-007 medido y resuelto (doble bufer), fichaje al desbloquear verificado con Win+L real, cancelar limpia la presencia preferida, y dos fallos reales encontrados y corregidos: ERR-006 (cache MSAL sin registrar, tapado por la sincronizacion) y TEC-017 (ps1 sin BOM => mojibake en PS 5.1). Ademas: README de portada reescrito (decia 'Plantilla de Proyecto Ovillo') y ADR-010: el andamio de Ovillo deja de versionarse, de 532 ficheros a 52; clon limpio desde GitHub compila y arranca, verificado.",
     "archivosModificados": [
-      ".gitignore",
-      "CLAUDE.md",
       "_hilo/ESTADO_PROYECTO.json",
-      "_hilo/METRICAS.json",
-      "AGENTS.md"
+      "_hilo/METRICAS.json"
     ],
     "notas": "La aplicacion esta INSTALADA en HUGOVALER via instalar.ps1 (LOCALAPPDATA\\Programs\\MiJornada, entrada en Aplicaciones instaladas). El .exe de bin/Debug ya no es el que se usa: para probar cambios, recompilar y reinstalar o lanzar el de Debug con --datos."
   },
