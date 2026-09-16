@@ -2,7 +2,7 @@
   "_schema": "Documentacion de campos, ejemplos y opciones extendidas: _hilo/ESTADO_PROYECTO.schema.md (NO se carga en contexto; consultar bajo demanda)",
   "ecosistema": {
     "nombre": "Ovillo",
-    "version": "1.2.3",
+    "version": "1.2.5",
     "componentes": {
       "Ovillo": {
         "descripcion": "Ecosistema completo (plantilla + comandos + skills + reglas)",
@@ -131,7 +131,7 @@
     ],
     "sprint_actual": null,
     "version_actual": "0.11.0",
-    "ultima_actualizacion": "2026-09-12",
+    "ultima_actualizacion": "2026-09-16",
     "actualizado_por": "Hugo Carlos Valer Rojas"
   },
   "acceso_bd": {
@@ -263,7 +263,7 @@
   },
   "ultimaSesion": {
     "_doc": "Se actualiza con /pausar y se lee con /continuar",
-    "fecha": "2026-09-12",
+    "fecha": "2026-09-16",
     "evolutivoActivo": null,
     "usuario": "Hugo Carlos Valer Rojas",
     "ramaActiva": "main",
